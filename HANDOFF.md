@@ -36,5 +36,11 @@ validated the clean fixture checkout. Whitespace passed.
 Local Windows native and CLI checks failed while linking dependency build scripts:
 MinGW collect2/ld exit 204, including the documented GCC-driver retry. No further
 local linker retries; Linux CI runs both core configurations and adapter controls.
-Local Kotlin/lint is running with existing caches and the previous accepted native
+Local Kotlin/lint passed (5m57s) with existing caches and the previous accepted native
 library for compile-only purposes. That library is not extraction linking evidence.
+
+
+Extraction source 0388042 is pushed. Combined CI 37888964074 is running:
+https://github.com/spideyonmoon/alfred/actions/runs/37888964074. Linux standalone
+core CLI/no-CLI checks and native adapter controls have passed; both ABI packaging
+and emulator jobs remain pending. Core-side move is pushed at 0a41632.

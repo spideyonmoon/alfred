@@ -1,5 +1,11 @@
 # Alfred product and repository boundary
 
+Extracted 2026-10-09 into this repository at owner request. App modules and
+adapter are at the Gradle root; the engine uses the full-revision Git dependency
+in `native/adapter/Cargo.toml` and `core-dependency.json`. `.core` provides only an
+ignored pinned validation checkout. The dated co-location decisions below are
+historical. Core CLI/library, computation, schemas and fixtures stay independent.
+
 Planning correction agreed 2026-10-06. This defines ownership and integration
 seams, not implemented app behavior or detailed APIs for future features.
 

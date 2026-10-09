@@ -1,5 +1,11 @@
 # Alfred initial Android integration contract
 
+Extracted 2026-10-09 into this repository at owner request. App modules and
+adapter are at the Gradle root; the engine uses the full-revision Git dependency
+in `native/adapter/Cargo.toml` and `core-dependency.json`. `.core` provides only an
+ignored pinned validation checkout. The dated co-location decisions below are
+historical. Core CLI/library, computation, schemas and fixtures stay independent.
+
 Contract **alfred-host-v1**, frozen by A01 on **2026-10-07** for A02–A07.
 The three review corrections were incorporated on 2026-10-07 before any adapter
 implementation; this remains the initial, unshipped transport contract.
