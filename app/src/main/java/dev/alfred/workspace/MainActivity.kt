@@ -30,8 +30,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import dev.alfred.compare.CompareScreen
-import dev.alfred.compare.compareOperation
 import dev.alfred.forensics.ForensicsScreen
 import dev.alfred.forensics.forensicsOperation
 import dev.alfred.shared.FeatureId
@@ -39,10 +37,7 @@ import dev.alfred.shared.NativeBootstrap
 import dev.alfred.shared.SafPicker
 import dev.alfred.shared.WorkspaceInput
 import dev.alfred.shared.WorkspaceState
-import dev.alfred.shared.operationCapability
 import dev.alfred.shared.withSelectedItems
-import dev.alfred.spectrogram.SpectrogramScreen
-import dev.alfred.spectrogram.spectrogramOperation
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.delay
@@ -79,7 +74,6 @@ class MainActivity : ComponentActivity() {
         setContent {
             var appearance by rememberSaveable { mutableStateOf(preferences.getString("appearance", "system") ?: "system") }
             var preset by rememberSaveable { mutableStateOf(preferences.getString("preset", "publication") ?: "publication") }
-            val changePreset: (String) -> Unit = { value -> preset = value; preferences.edit().putString("preset", value).apply() }
             AlfredTheme(appearance) {
                 val workspace by model.workspace
                 var checkedItems by rememberSaveable(workspace.selection?.id) {
@@ -90,17 +84,14 @@ class MainActivity : ComponentActivity() {
                 var transferNotice by remember { mutableStateOf("") }
                 var exportAttempt by rememberSaveable { mutableStateOf<String?>(null) }
                 var exportDescriptor by rememberSaveable { mutableStateOf<String?>(null) }
-                var exportMetadataId by rememberSaveable { mutableStateOf<String?>(null) }
                 val coroutine = rememberCoroutineScope()
                 val destination = rememberLauncherForActivityResult(ResultDestination()) { uri ->
                     val attempt = exportAttempt
                     val descriptor = exportDescriptor
-                    val metadataId = exportMetadataId
-                    exportAttempt = null; exportDescriptor = null; exportMetadataId = null
-                    if (uri != null && (metadataId != null || (attempt != null && descriptor != null))) coroutine.launch {
+                    exportAttempt = null; exportDescriptor = null
+                    if (uri != null && attempt != null && descriptor != null) coroutine.launch {
                         try { withContext(Dispatchers.IO) {
-                            if (metadataId != null) model.inputs.exportMetadata(metadataId, uri)
-                            else model.transfers.export(attempt!!, ResultDescriptor.from(org.json.JSONObject(descriptor!!)), uri).get()
+                            model.transfers.export(attempt, ResultDescriptor.from(org.json.JSONObject(descriptor)), uri).get()
                         }; transferNotice = "Export completed" }
                         catch (error: Exception) { transferNotice = "Export failed: ${resultFailure(error)} · local result retained" }
                     }
@@ -166,24 +157,18 @@ class MainActivity : ComponentActivity() {
                     Column(Modifier.fillMaxSize().padding(insets)) {
                         when (route) {
                             "settings" -> SettingsScreen(appearance, { value -> appearance = value; preferences.edit().putString("appearance", value).apply() },
-                                preset, changePreset, nativeStatus, notificationAllowed,
+                                preset, nativeStatus, notificationAllowed,
                                 { if (Build.VERSION.SDK_INT >= 33) notifications.launch(Manifest.permission.POST_NOTIFICATIONS) })
                             "music" -> MusicWorkspace(workspace, checked, { checkedItems = it.toList() }, inputs,
-                                listOf(forensicsOperation, spectrogramOperation, compareOperation), { route = it.name },
-                                { files.launch(Unit) }, { folder.launch(Unit) }, preset, changePreset,
-                                { item -> exportMetadataId = item; destination.launch("alfred-metadata.json") })
+                                forensicsOperation, { route = it.name }, { files.launch(Unit) }, { folder.launch(Unit) })
                             in FeatureId.entries.map { it.name } -> {
                                 TextButton(onClick = { route = "music" }) { Text("Back to workspace") }
                                 Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp),
                                     verticalArrangement = Arrangement.spacedBy(12.dp)) {
                                     when (route) {
-                                        FeatureId.FORENSICS.name -> ForensicsScreen(selectedInputs, model.jobs, jobs, export, share) { feature ->
-                                            val operation = when (feature) { FeatureId.FORENSICS -> forensicsOperation; FeatureId.SPECTROGRAM -> spectrogramOperation; FeatureId.COMPARE -> compareOperation }
-                                            val capability = operationCapability(operation, workspace.withSelectedItems(checked))
-                                            if (capability.state == "available" && !workspace.busy) route = feature.name else transferNotice = capability.reason
-                                        }
-                                        FeatureId.SPECTROGRAM.name -> SpectrogramScreen(selectedInputs, model.jobs, jobs, export, share, preset)
-                                        FeatureId.COMPARE.name -> CompareScreen(selectedInputs, workspace.sameTrack, model.jobs, jobs, export, share)
+                                        FeatureId.FORENSICS.name -> ForensicsScreen(selectedInputs, model.jobs, jobs, export, share) { feature -> route = feature.name }
+                                        FeatureId.SPECTROGRAM.name -> FeatureShell("Spectrogram", "A place for visualizing the selected track's spectrum. Rendering and export are planned.")
+                                        FeatureId.COMPARE.name -> FeatureShell("Compare", "A place for comparing 2–32 declared variants of the same track. Comparison is planned.")
                                     }
                                 }
                             }

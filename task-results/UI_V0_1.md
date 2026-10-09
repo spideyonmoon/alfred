@@ -2,11 +2,42 @@
 
 Source: local `owner-input/UI_v0_1.pdf`, supplied by the owner. The PDF remains
 owner input; its diagram is a flow/layout reference, not final visual acceptance.
-The owner clarified that Compare retains 2-32 variants. Metadata is implemented
-read-only using the current engine contract while editing/conversion semantics
-remain unspecified.
+The owner clarified that Compare retains 2-32 variants, then narrowed the current
+app to Audio Forensics with shells for the remaining features. Current scope and
+checks follow; the earlier full-route implementation/checkpoints below are history.
 
-## Implemented
+## Current Forensics-only scope
+
+Audio Forensics retains input acquisition, selected-subset admission, explicit
+full/partial scope, qualified results, exact raw fields, history, export and share.
+Home/Settings, the selectable/scrollable music table and adjustable Forensic/
+Metadata panel remain. Spectrogram and Compare open cards marked Planned feature;
+Metadata studio is a shell in its tab. These routes expose no execution, inspector,
+export or history controls. PNG resolution controls are disabled. Future Compare
+keeps the owner's 2-32 same-track contract. No tag editing, conversion, cue/log,
+image processing or batch directory export is implemented.
+
+Existing feature modules and generated backend controls remain intact internally.
+The preparatory bounded original-probe cache/read/export implementation is retained
+but has no production Metadata studio UI entry. Complete metadata remains visible
+inside Audio Forensics results. Core/adapter/pins/lock are unchanged.
+
+The SAF/feature UI harness now expects shells and chosen-subset Audio Forensics.
+Native/input/Forensics/jobs controls and 22 internal viewer/Compare backend controls
+remain in emulator-smoke.py. Old PNG/history UI expectations are superseded by the
+owner's explicit scope change; no old pass flags are emitted for the shells.
+
+Final local offline Kotlin/lint/assemble passed in 2m20s: 0 errors, 13 warnings,
+5 hints. ARM64 fixture bytes, every native ELF/ZIP 16KiB alignment, zipalign and
+development signature passed. Current APK app/build/outputs/apk/debug/app-debug.apk
+SHA256: 0463bccf8c8752d6bb8464012a3b25ab2a1f3656c2e98a5d7c3ba08ed479bca0.
+Native is the byte-verified accepted extraction library described below. Host
+Python syntax, source UTF-8 and whitespace checks passed. No local device/runtime,
+new CI compilation/emulator job, owner visual acceptance, A07 or release acceptance.
+Current Kotlin differs from source-bound CI APKs, so those APKs cannot validate
+the shells. A fresh build checkpoint is required when the owner elects to spend CI.
+
+## Earlier implementation before the shell clarification
 
 - Home file/multiple/folder selection, separate Settings, saved feature histories.
 - Music table with select-all and individual row selection, independent horizontal
@@ -42,7 +73,7 @@ tree destination, naming/collision/partial-failure requirements; current per-res
 SAF export remains available. Those absent controls are not represented as working
 actions. The current PNG viewer and Compare semantics remain the accepted scope.
 
-## Validation
+## Earlier local validation before the shell clarification
 
 - Initial offline Kotlin/lint passed in 5m49s (0 errors, 14 warnings, 5 hints).
   Additional changes followed; this is an intermediate result.
@@ -74,7 +105,7 @@ actions. The current PNG viewer and Compare semantics remain the accepted scope.
 - Rust adapter/core/pins/lock and engine fixtures are unchanged. No native rebuild,
   scoring, private-audio upload, release, license or signing-identity change.
 
-Next validation should build the new application sources once, exercise an
+At that point the next validation was to build the new application sources once, exercise an
 affected API through the full generated harness, and reuse that source-bound APK
 for additional APIs only when justified. An old whole APK cannot validate this UI.
 
@@ -85,7 +116,8 @@ Automatic approval review rejected pushing that branch to spideyonmoon/alfred:
 the source/docs payload's egress was not specifically authorized. Push and the
 dependent one-API31 manual workflow dispatch did not execute in that rejected
 attempt. The owner then explicitly approved pushing ee704d2 / 84e1171 and one
-API31 CI checkpoint. Push and manual dispatch succeeded: CI37902157751 is running.
+API31 CI checkpoint. Push and manual dispatch succeeded: CI37902157751 failed as
+recorded below.
 The PDF, APK, caches, native build inputs and private audio are excluded from Git.
 
 ## First UI checkpoint and harness-only correction
@@ -125,9 +157,29 @@ overshooting the label is the current inference; backend metadata is successful,
 but this does not establish UI success. Forensics/viewer/Compare/jobs runtime
 suites were not reached, and the run remains red.
 
-Further harness-only correction selects the enabled clickable ancestor only
+Further harness-only correction selected the enabled clickable ancestor only
 when it has sufficient visible height and bottom clearance, uses shorter swipes
 within the observed lower scroll surface, and saves before/after-tap hierarchy.
 Syntax, actual retained Metadata-tab visibility and host clipped/full-button
 selection checks passed. Production sources/APKs remain unchanged. Additional
-build-free API31 attempts require approval beyond the single retry already used.
+build-free API31 attempts required approval beyond the single retry already used.
+
+## Second build-free retry and scope change
+
+Owner approved pushing 9fa28c1 and up to two reuse attempts, stopping on success or
+if APK source changes were needed. Only one was used: CI37904658295 reused the
+verified 84e1171 APKs from CI37902157751, with no compilation. Source/core/APK guard,
+actual Settings/native bootstrap, 16 native controls, all six input groups and
+real SAF single/multiple/folder checks passed. The corrected Metadata UI tap and
+All report fields observation passed, as did selection/subset/resize assertions.
+18 Forensics backend checks, five history/raw-field UI checks and all 22 internal
+viewer/Compare backend controls passed. It then failed in features-ui-smoke.py
+finding `3: png`; later PNG/Compare UI and all job lifecycle suites were not run.
+The aggregate run is red. Saved hierarchy shows a spectrogram result/raw fields;
+the PNG observation failure is not claimed solved or waived.
+
+Receipts/screenshots/XML/logcat are under build/ui-ci/37904658295/api31. These are
+generated inputs only and evidence for the previous full-route revision. The
+owner's subsequent Forensics-only instruction produced the shell changes above.
+That requires new APK source, so the remaining reuse attempt was not dispatched.
+No additional CI or other APIs were run. Earlier failures remain part of the ledger.

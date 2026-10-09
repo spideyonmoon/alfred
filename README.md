@@ -1,6 +1,7 @@
 # Alfred
 
-Offline Android audio workspace with independent Forensics, Spectrogram and Compare.
+Offline Android audio workspace. Audio Forensics is the available feature;
+Spectrogram, Compare and Metadata studio currently have planned-feature shells.
 The Android app, shared infrastructure and JNI adapter live here. The independent
 [Audio Forensic Rust engine](https://github.com/spideyonmoon/audio-forensic-rust)
 remains a one-way dependency, pinned in `core-dependency.json`, the adapter manifest
@@ -17,7 +18,10 @@ The adapter resolves the same revision through Cargo's Git dependency/cache.
 The owner-supplied UI v0.1 scratchpad is being integrated into Home/Settings, a
 selectable music table and separate Forensic/Metadata action tabs. See
 [the implementation record](task-results/UI_V0_1.md) for scope and validation.
-The implementation has not received runtime or owner visual acceptance.
+The owner clarified that the remaining features should stay as shells. Existing
+backend contracts and development checks are retained, without presenting them as
+completed features. The current shell revision has local build/lint/packaging
+checks; its runtime and owner visual acceptance remain pending.
 A07 physical-device/resources and A08 release/signing remain unaccepted.
 
 ## Provenance and licensing

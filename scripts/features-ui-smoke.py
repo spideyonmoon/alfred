@@ -24,21 +24,41 @@ def run(output, receipt):
     def swipe(up):
         current = nodes()
         _, _, width, height = map(int, re.findall(r"\d+", current[0].attrib["bounds"]))
+        panels = [n for n in current if n.attrib.get("scrollable") == "true" and
+                  int(re.findall(r"\d+", n.attrib["bounds"])[1]) >= height // 2]
+        if panels:
+            left, top, right, bottom = map(int, re.findall(r"\d+", panels[0].attrib["bounds"]))
+            distance = max(24, (bottom - top) // 3)
+            a, b = (bottom - 16, bottom - 16 - distance) if up else (top + 16, top + 16 + distance)
+            adb("shell", "input", "swipe", str((left + right) // 2), str(a), str(b), "250")
+            return
         a, b = (height * 4 // 5, height // 3) if up else (height // 3, height * 4 // 5)
         adb("shell", "input", "swipe", str(width // 2), str(a), str(width // 2), str(b), "250")
 
-    def find(text, scroll=True, up=True):
+    def find(text, scroll=True, up=True, actionable=False):
         for _ in range(20):
-            found = next((n for n in nodes() if text in n.attrib.get("text", "")), None)
-            if found is not None:
-                return found
+            current = nodes()
+            parents = {child: parent for parent in current for child in parent}
+            height = int(re.findall(r"\d+", current[0].attrib["bounds"])[-1])
+            for node in current:
+                if text not in node.attrib.get("text", ""):
+                    continue
+                target = node
+                if actionable:
+                    while target is not None and target.attrib.get("clickable") != "true":
+                        target = parents.get(target)
+                    if target is None or target.attrib.get("enabled") != "true":
+                        continue
+                left, top, right, bottom = map(int, re.findall(r"\d+", target.attrib["bounds"]))
+                if right > left and bottom - top >= (44 if actionable else 18) and bottom <= height - 8:
+                    return target
             if scroll:
                 swipe(up)
             time.sleep(.5)
         raise AssertionError("Feature UI missing: " + text)
 
     def click(text, up=True):
-        node = find(text, up=up)
+        node = find(text, up=up, actionable=True)
         left, top, right, bottom = map(int, re.findall(r"\d+", node.attrib["bounds"]))
         adb("shell", "input", "tap", str((left + right) // 2), str((top + bottom) // 2))
         time.sleep(.5)
@@ -56,37 +76,11 @@ def run(output, receipt):
     (output / "feature-ui-smoke.json").write_text(json.dumps({"passed": True, "checks": 5,
         "history_after_restart": True, "api": int(adb("shell", "getprop", "ro.build.version.sdk"))}))
     adb("shell", "input", "keyevent", "4")
-    viewer = receipt.get("viewer")
-    if viewer:
-        click("Spectrogram history")
-        find("Independent bounded P06", up=False)
-        click("Open completed · " + viewer["preview_attempt"])
-        find("Measurement: analyzed")
-        click("3: png")
-        find("Scaled viewing preview")
-        # The decoded image follows the status paragraph and can still be below
-        # the viewport when find(status) returns. Observe the actual image with
-        # the same bounded scroll/wait policy used for other visible controls.
-        image = None
-        for _ in range(20):
-            image = next((n for n in nodes() if n.attrib.get("content-desc") == "Calibrated Rust spectrogram PNG"), None)
-            if image is not None:
-                break
-            swipe(True)
-            time.sleep(.5)
-        assert image is not None, "Rust PNG was not displayed after bounded scroll/wait"
-        adb("shell", "screencap", "-p", "/sdcard/alfred-spectrogram.png")
-        adb("pull", "/sdcard/alfred-spectrogram.png", str(output / "spectrogram-display.png"))
-        click("Open completed · " + viewer["old_attempt"], up=False)
-        find("Presentation/encoded bitrate unavailable")
+    for label, title in (("Spectrogram · planned", "Spectrogram"), ("Compare · planned", "Compare")):
+        click(label)
+        find(title, scroll=False)
+        find("Planned feature", scroll=False)
+        assert not any(n.attrib.get("text", "").startswith(("Analyze", "Render", "Compare saved", "Open completed")) for n in nodes()), "Shell exposed execution/history"
         adb("shell", "input", "keyevent", "4")
-        click("Compare history")
-        find("Compare saved products", up=False)
-        click("Open completed · " + viewer["compare_attempt"])
-        click("3: comparison")
-        find("Comparison: available")
-        find("Winner reported by Rust")
-        (output / "viewer-compare-ui.json").write_text(json.dumps({"passed": True,
-            "independent_routes_after_restart": True, "Rust_PNG_display": True,
-            "saved_product_selection_visible": True, "comparison_history": True}))
-        adb("shell", "input", "keyevent", "4")
+    (output / "feature-shell-ui.json").write_text(json.dumps({"passed": True,
+        "spectrogram_shell": True, "compare_shell": True, "after_restart": True}))

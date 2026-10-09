@@ -210,24 +210,19 @@ def run(output: Path):
     (output / "saf-folder.xml").write_bytes((output / "saf-current.xml").read_bytes())
     adb("shell", "screencap", "-p", "/sdcard/alfred-workspace.png")
     adb("pull", "/sdcard/alfred-workspace.png", str(output / "workspace-display.png"))
-    # Exercise the owner scratchpad's independent metadata route with the
-    # generated selection; this must not submit a forensic/DSP operation.
+    # The owner currently exposes Audio Forensics only. Other routes are shells;
+    # verify their status rather than requiring unfinished workflows to execute.
     click("Metadata")
     match("Metadata studio")
-    inspect = panel_match("Inspect metadata · same.flac", actionable=True)
-    (output / "metadata-before-tap.xml").write_bytes((output / "saf-current.xml").read_bytes())
-    tap(inspect)
-    time.sleep(1)
-    nodes()
-    (output / "metadata-after-tap.xml").write_bytes((output / "saf-current.xml").read_bytes())
-    panel_match("All report fields")
+    panel_match("Planned feature")
+    assert not any(n.attrib.get("text", "").startswith("Inspect metadata") for n in nodes()), "Metadata shell exposed an inspector"
     (output / "workspace-metadata.xml").write_bytes((output / "saf-current.xml").read_bytes())
     adb("shell", "screencap", "-p", "/sdcard/alfred-metadata.png")
     adb("pull", "/sdcard/alfred-metadata.png", str(output / "metadata-display.png"))
     click("Forensic")
     current = nodes()
     assert any(n.attrib.get("content-desc") == "Track table height" for n in current), "Resizable table control missing"
-    # Only one chosen row can enter Spectrogram from a multi-file workspace.
+    # Audio Forensics acts on the chosen subset of a multi-file workspace.
     tap(match("Select all tracks"))
     match("0 of 3 selected documents")
     tap(match("Select same.flac"))
@@ -241,11 +236,19 @@ def run(output: Path):
             ):
                 return True
         return False
-    panel_match("Spectrogram")
-    assert enabled_action("Spectrogram"), "Single-row Spectrogram action unavailable"
+    panel_match("Audio Forensics")
+    assert enabled_action("Audio Forensics"), "Single-row Audio Forensics action unavailable"
+    for label, title in (("Spectrogram · planned", "Spectrogram"), ("Compare · planned", "Compare")):
+        tap(panel_match(label, actionable=True))
+        match(title)
+        match("Planned feature")
+        assert not any(n.attrib.get("text", "").startswith(("Analyze", "Render", "Compare saved", "Open completed")) for n in nodes()), "Planned route exposed execution/history"
+        adb("shell", "input", "keyevent", "4")
+        match("Music")
     import json
     (output / "workspace-ui-smoke.json").write_text(json.dumps({"passed": True, "api": api,
-        "metadata_without_DSP": True, "select_all_and_subset": True, "single_row_spectrogram": True,
+        "metadata_shell": True, "select_all_and_subset": True, "single_row_forensics": True,
+        "spectrogram_and_compare_shells": True,
         "resize_control_visible": True}))
 
 

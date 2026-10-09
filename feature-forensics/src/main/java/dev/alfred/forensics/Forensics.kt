@@ -48,8 +48,8 @@ fun ForensicsScreen(inputs: FeatureInputs?, jobs: SharedJobs, records: List<JobR
         records.lastOrNull { it.feature == "forensics" && it.terminal && it.items == inputs.selection.items.map { item -> item.id } }?.let { previous ->
             Button(enabled = !submitting, onClick = { start(JSONObject(previous.options).getJSONObject("scope"), previous.jobId) }) { Text("Retry with fresh input") }
         }
-        Button(onClick = { onRoute(FeatureId.SPECTROGRAM) }) { Text("Open Spectrogram workflow") }
-        Button(onClick = { onRoute(FeatureId.COMPARE) }) { Text("Open Audio Compare workflow") }
+        Button(onClick = { onRoute(FeatureId.SPECTROGRAM) }) { Text("Spectrogram · planned") }
+        Button(onClick = { onRoute(FeatureId.COMPARE) }) { Text("Compare · planned") }
     } else Text("Select documents in the workspace to start a new analysis. Saved results remain available.")
     ResultBrowser("forensics", jobs, records, setOf("product" to "audio-forensic-product-v1", "alfred-result" to "1"), onExport, onShare) { descriptor, value ->
         if (descriptor.kind == "product" && value is Map<*, *>) {

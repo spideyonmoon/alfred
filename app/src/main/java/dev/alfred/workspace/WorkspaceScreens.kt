@@ -21,9 +21,6 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import dev.alfred.shared.*
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.withContext
 
 @Composable
 fun AlfredTheme(appearance: String, content: @Composable () -> Unit) {
@@ -42,7 +39,7 @@ fun HomeScreen(onSingle: () -> Unit, onMultiple: () -> Unit, onFolder: () -> Uni
         verticalArrangement = Arrangement.spacedBy(18.dp)) {
         Spacer(Modifier.height(24.dp))
         Text("Your audio workspace", style = MaterialTheme.typography.headlineLarge)
-        Text("Inspect your music, read its metadata and run offline analysis.", style = MaterialTheme.typography.bodyLarge)
+        Text("Select your music and run offline Audio Forensics.", style = MaterialTheme.typography.bodyLarge)
         Card(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("Select file / folder", style = MaterialTheme.typography.titleLarge)
@@ -54,9 +51,8 @@ fun HomeScreen(onSingle: () -> Unit, onMultiple: () -> Unit, onFolder: () -> Uni
             }
         }
         Text("Saved results", style = MaterialTheme.typography.titleLarge)
-        FeatureId.entries.forEach { feature ->
-            OutlinedButton(onClick = { onHistory(feature) }, modifier = Modifier.fillMaxWidth()) { Text("${featureTitle(feature)} history") }
-        }
+        OutlinedButton(onClick = { onHistory(FeatureId.FORENSICS) }, modifier = Modifier.fillMaxWidth()) { Text("Forensics history") }
+        Text("Spectrogram, Compare and Metadata studio are planned features.", style = MaterialTheme.typography.bodySmall)
         Text("Audio stays on this device. Folder selection reads the first level only.", style = MaterialTheme.typography.bodySmall)
     }
 }
@@ -68,7 +64,7 @@ fun featureTitle(feature: FeatureId): String = when (feature) {
 }
 
 @Composable
-fun SettingsScreen(appearance: String, onAppearance: (String) -> Unit, preset: String, onPreset: (String) -> Unit,
+fun SettingsScreen(appearance: String, onAppearance: (String) -> Unit, preset: String,
                    nativeStatus: String, notificationsAllowed: Boolean, onNotifications: () -> Unit) {
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)) {
@@ -79,11 +75,11 @@ fun SettingsScreen(appearance: String, onAppearance: (String) -> Unit, preset: S
                 FilterChip(appearance == value, onClick = { onAppearance(value) }, label = { Text(value.replaceFirstChar { it.uppercase() }) })
             }
         }
-        Text("Default spectrogram resolution", style = MaterialTheme.typography.titleMedium)
+        Text("Spectrogram resolution · planned", style = MaterialTheme.typography.titleMedium)
         listOf("standard" to "1600 × 900", "publication" to "2560 × 1440", "large" to "3840 × 2160").forEach { (value, size) ->
-            FilterChip(preset == value, onClick = { onPreset(value) }, label = { Text("$size · $value") })
+            FilterChip(preset == value, onClick = {}, enabled = false, label = { Text("$size · $value") })
         }
-        Text("The chosen size applies to new spectrogram workflows. Saved PNGs retain their original resolution.")
+        Text("Resolution presets will be available when Spectrogram is ready.")
         HorizontalDivider()
         Text("Job notifications", style = MaterialTheme.typography.titleMedium)
         Text(if (notificationsAllowed) "Allowed" else "Denied · operations can continue; return to Alfred to cancel or inspect progress.")
@@ -96,12 +92,10 @@ fun SettingsScreen(appearance: String, onAppearance: (String) -> Unit, preset: S
 
 @Composable
 fun MusicWorkspace(state: WorkspaceState, selected: Set<String>, onSelected: (Set<String>) -> Unit,
-                   inputs: WorkspaceInput, operations: List<Operation>, onFeature: (FeatureId) -> Unit,
-                   onPick: () -> Unit, onFolder: () -> Unit, preset: String, onPreset: (String) -> Unit,
-                   onMetadataExport: (String) -> Unit) {
+                   inputs: WorkspaceInput, forensicOperation: Operation, onFeature: (FeatureId) -> Unit,
+                   onPick: () -> Unit, onFolder: () -> Unit) {
     var tab by rememberSaveable { mutableStateOf(0) }
     var tableFraction by rememberSaveable { mutableFloatStateOf(0.44f) }
-    var resolutionMenu by remember { mutableStateOf(false) }
     val panelScroll = rememberScrollState()
     LaunchedEffect(tab) { panelScroll.scrollTo(0) }
     val items = state.selection?.items.orEmpty()
@@ -112,14 +106,7 @@ fun MusicWorkspace(state: WorkspaceState, selected: Set<String>, onSelected: (Se
             Row {
                 TextButton(onClick = onPick) { Text("Files") }
                 TextButton(onClick = onFolder) { Text("Folder") }
-                Box {
-                    TextButton(onClick = { resolutionMenu = true }) { Text("Resolution") }
-                    DropdownMenu(resolutionMenu, onDismissRequest = { resolutionMenu = false }) {
-                        listOf("standard" to "1600 × 900", "publication" to "2560 × 1440", "large" to "3840 × 2160").forEach { (value, size) ->
-                            DropdownMenuItem(text = { Text("$size${if (preset == value) " · selected" else ""}") }, onClick = { onPreset(value); resolutionMenu = false })
-                        }
-                    }
-                }
+                TextButton(onClick = {}, enabled = false) { Text("Resolution") }
             }
         }
         Text("${selected.size} of ${items.size} selected documents", style = MaterialTheme.typography.labelLarge)
@@ -151,21 +138,19 @@ fun MusicWorkspace(state: WorkspaceState, selected: Set<String>, onSelected: (Se
                             Button(enabled = selected.size in 1..31, onClick = { inputs.confirmFolder(selected) }) { Text("Use selected documents") }
                         } else if (tab == 0) {
                             Text("Actions panel", style = MaterialTheme.typography.titleMedium)
-                            if (selected.size >= 2) Row(verticalAlignment = Alignment.CenterVertically) {
-                                Checkbox(state.sameTrack, onCheckedChange = { inputs.assertSameTrack(it) })
-                                Text("These are variants of the same track", modifier = Modifier.weight(1f))
+                            val capability = operationCapability(forensicOperation, chosen)
+                            Button(enabled = capability.state == "available" && !state.busy,
+                                onClick = { onFeature(FeatureId.FORENSICS) }, modifier = Modifier.fillMaxWidth()) { Text(forensicOperation.title) }
+                            Text(capability.reason, style = MaterialTheme.typography.bodySmall)
+                            Text("Choose full or partial analysis in Audio Forensics. Reference scores are uncalibrated; they do not measure sound quality.", style = MaterialTheme.typography.bodySmall)
+                            Text("Planned tools", style = MaterialTheme.typography.titleSmall)
+                            listOf(FeatureId.SPECTROGRAM, FeatureId.COMPARE).forEach { feature ->
+                                OutlinedButton(onClick = { onFeature(feature) }, modifier = Modifier.fillMaxWidth()) { Text("${featureTitle(feature)} · planned") }
                             }
-                            operations.forEach { operation ->
-                                val capability = operationCapability(operation, chosen)
-                                Button(enabled = capability.state == "available" && !state.busy,
-                                    onClick = { onFeature(operation.id) }, modifier = Modifier.fillMaxWidth()) { Text(operation.title) }
-                                Text(capability.reason, style = MaterialTheme.typography.bodySmall)
-                            }
-                            Text("Choose full or partial analysis in each workflow. Reference scores are uncalibrated; they do not measure sound quality.", style = MaterialTheme.typography.bodySmall)
-                        } else MetadataPanel(state, selected, inputs, onMetadataExport)
+                        } else FeatureShell("Metadata studio", "A place for inspecting and editing tags. Metadata in completed Audio Forensics reports remains available.")
                         HorizontalDivider()
                         Text("Saved results", style = MaterialTheme.typography.titleSmall)
-                        FeatureId.entries.forEach { feature -> TextButton(onClick = { onFeature(feature) }) { Text("${featureTitle(feature)} history") } }
+                        TextButton(onClick = { onFeature(FeatureId.FORENSICS) }) { Text("Forensics history") }
                     }
                 }
             }
@@ -211,31 +196,13 @@ private fun TableCell(value: String, width: Int, heading: Boolean = false) {
 }
 
 @Composable
-private fun MetadataPanel(state: WorkspaceState, selected: Set<String>, inputs: WorkspaceInput, onExport: (String) -> Unit) {
-    var itemId by rememberSaveable(state.selection?.id) { mutableStateOf<String?>(null) }
-    var document by remember { mutableStateOf<Any?>(null) }
-    var notice by remember { mutableStateOf("") }
-    val current = state.selection?.items?.firstOrNull { it.id == itemId && it.id in selected }
-    LaunchedEffect(current?.id, state.probes[current?.id]?.metadataAvailable) {
-        document = null
-        notice = ""
-        if (current == null) return@LaunchedEffect
-        notice = "Loading metadata…"
-        try {
-            document = withContext(Dispatchers.IO) { inputs.readMetadata(current.id) }
-            notice = "Header metadata · ${current.name}"
-        } catch (error: CancellationException) { throw error }
-        catch (error: Exception) { notice = resultFailure(error) }
-    }
-    Text("Metadata studio", style = MaterialTheme.typography.titleMedium)
-    Text("Read-only container declarations, raw tags and diagnostics. Header metadata does not verify decoded PCM or audio quality.")
-    state.selection?.items?.filter { it.id in selected }?.forEach { item ->
-        TextButton(enabled = state.probes[item.id]?.metadataAvailable == true, onClick = { itemId = item.id }) { Text("Inspect metadata · ${item.name}") }
-    }
-    if (selected.isEmpty()) Text("Select a track above to inspect its metadata.")
-    if (notice.isNotEmpty()) Text(notice)
-    if (current != null && document != null) {
-        OutlinedButton(onClick = { onExport(current.id) }) { Text("Export original metadata JSON") }
-        key(current.id) { ExactFields(document) }
+fun FeatureShell(title: String, description: String) {
+    Card(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text(title, style = MaterialTheme.typography.titleLarge)
+            Text("Planned feature", style = MaterialTheme.typography.labelLarge)
+            Text(description)
+            Text("Audio Forensics is the available feature.", style = MaterialTheme.typography.bodySmall)
+        }
     }
 }

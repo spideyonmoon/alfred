@@ -1,51 +1,48 @@
 # Alfred handoff
 
 Updated 2026-10-09. Extraction complete. Owner supplied UI_v0_1.pdf and authorized
-implementation; the first workspace integration is in development below.
+implementation; the workspace now follows the owner's Forensics-only scope.
 Continue here, not the core repo. Visual/physical acceptance is still pending.
 
 ## Owner UI v0.1 integration - 2026-10-09
 
-Read task-results/UI_V0_1.md for scratchpad mapping and validation. Home/Settings,
-scrollable selectable music table, adjustable actions panel, Forensic/Metadata
-tabs, selected-subset routing, PNG presets and configurable Forensics prefix are
-implemented. Compare remains 2-32 variants per owner clarification. Metadata is
-read-only complete original probe JSON with explicit SAF export, bounded selection
-storage/reader leases and prior-process orphan cleanup. Original engine payloads,
-native adapter/pins and bounded job admission remain unchanged.
+Latest owner clarification: Audio Forensics is the only available feature.
+Spectrogram, Compare and Metadata studio are planned-feature shells. Do not finish
+the remaining tools without further scope decisions. Future Compare remains 2-32
+same-track variants. Existing feature backend code and generated controls remain
+intact; this is not acceptance of those tools as completed app features.
 
-Tag writes/conversion, image+cue/log processing and batch-directory PNG export are
-still requirements work; no placeholder actions claim to implement them. New
-input/SAF assertions are added, not yet run. Offline Kotlin/lint/assemble and final
-ARM64 APK fixture/alignment/signature checks passed (0 lint errors, 14 warnings,
-5 hints); native library is byte-verified reuse of the accepted extraction build.
-No local Android device is connected. No new CI/runtime/visual acceptance or A07
-closure. Review APK/hash and exact intermediate checks are in UI_V0_1.md.
+Home/Settings, selectable horizontally/vertically scrollable music table,
+adjustable Forensic/Metadata panel, selected-subset Audio Forensics, configurable
+partial prefix and Forensics history/export/share remain available. Planned
+routes have no execution/history controls; resolution controls are disabled.
+Original engine payloads, native adapter/pins and bounded jobs remain unchanged.
+Preparatory original-probe storage/read/export code is retained internally, but
+Metadata studio no longer exposes it. Tag writes/conversion, image+cue/log and
+batch-directory PNG export remain deferred. Read task-results/UI_V0_1.md.
 
-UI source ee704d2 / validation notes 84e1171 are pushed to codex/ui-v0-1. Automatic
-approval review initially rejected that push for missing explicit source/docs
-egress authorization; the owner then explicitly approved those commits and one
-API31 checkpoint. CI37902157751 built both ABIs and passed core/native controls,
-lint, pins/assets/alignment/signatures. API31 failed before its native/input/
-feature/job runtime suites: the bootstrap harness still searched Home for the
-native diagnostic, now in Settings. Saved Home hierarchy has both picker labels
-and Settings; no app crash/native-load error is recorded. Harness-only correction
-opens Settings and retains Home screenshot; syntax/actual saved-node coordinates
-passed locally. A build-free API31 retry awaits owner approval because only one
-checkpoint was approved. Existing source-bound APKs are under
-build/ui-ci/37902157751/apks; never rebuild solely for this harness change.
-No automatic duplicate build was started. PDF remains excluded owner input.
+Final shell revision: offline Kotlin/lint/assemble passed in 2m20s (0 lint errors,
+13 warnings, 5 hints). ARM64 APK generated fixtures, all ELF/ZIP 16KiB alignment,
+zipalign and development signature passed. APK is app/build/outputs/apk/debug/
+app-debug.apk, SHA256 0463bccf8c8752d6bb8464012a3b25ab2a1f3656c2e98a5d7c3ba08ed479bca0.
+Native is byte-verified reuse of the accepted extraction library, not a local
+native rebuild. No connected local device; shell runtime/owner visual acceptance
+and A07 remain pending. Current source differs from previous CI APKs: do not reuse
+them to validate this revision. No new compilation/API CI job was dispatched.
 
-Owner approved the first build-free retry; CI37903457491 passed source/APK/core
-reuse verification, actual Settings/native bootstrap, native controls and all
-input groups (including subset, independent metadata, exact export, stale rejection
-and cleanup). SAF single/multiple/folder acquisition passed. Metadata UI then
-failed finding All report fields. Small AVD panel/clipped tap or scroll overshoot
-is suspected, not proven; retained final XML has only history links at the panel
-bottom. New harness correction rejects clipped actionable targets, uses short
-panel-local swipes and records before/after-tap XML. Host visibility/clipped/full
-target checks and syntax passed. No compiled source changes. Further build-free
-API31 validation needs approval; features/viewer/jobs were not reached.
+Prior UI checkpoint history (full routes, source 84e1171): owner approved source
+push/one API31 build, then de9a881/one reuse, then 9fa28c1/up to two reuse attempts.
+CI37902157751 built both ABIs/core/native/lint/packaging, failed stale Home native
+bootstrap. CI37903457491 passed native/input/SAF, failed Metadata UI observation.
+CI37904658295 used one of the last two attempts: source/APK guard passed, build
+skipped; Settings bootstrap, 16 native controls, all six input groups, actual SAF,
+metadata/subset/resize workspace checks, 18 Forensics backend checks, five
+Forensics history/raw-field UI checks and 22 viewer/Compare backend controls passed.
+It failed observing `3: png` in Spectrogram UI; later PNG/Compare UI and all jobs
+lifecycle suites were not reached. Run remains red. Evidence is retained in
+build/ui-ci/37904658295/api31. The remaining allowed reuse attempt was not used:
+the owner's shell scope required compiled source changes, which ends reuse under
+their stop condition. Earlier failure evidence is retained. PDF remains excluded.
 
 Owner merged extraction PR1 into main at b0eca40. Baseline CI37898652707 passed
 both ABI builds, native/core/lint/packaging and all API30-36 jobs. This newer fully
