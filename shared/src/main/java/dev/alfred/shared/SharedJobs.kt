@@ -80,6 +80,7 @@ class SharedJobs private constructor(private val app: Context) {
     @Volatile private var cancellation: InputCancellation? = null
     @Volatile private var latest: JobProgress? = null
     @Volatile private var stopping = false
+    @Volatile private var idleStopping = false
     @Volatile private var forced: String? = null
     @Volatile private var published = emptyList<JobRecord>()
     @Volatile private var occupied = false
@@ -175,7 +176,7 @@ class SharedJobs private constructor(private val app: Context) {
             occupied = active != null || pending.isNotEmpty()
         }
     }
-    internal fun promoted() { foregroundReady = true; control.execute { launchNext() } }
+    internal fun promoted() { idleStopping = false; foregroundReady = true; control.execute { launchNext() } }
     @Synchronized private fun launchNext() {
         if (active != null || stopping || !foregroundReady) return
         val next = pending.removeFirstOrNull() ?: return
@@ -226,20 +227,20 @@ class SharedJobs private constructor(private val app: Context) {
     /** Reserve the idle shutdown until onDestroy detaches the actual service. */
     @Synchronized internal fun stopIfIdle(): Boolean {
         if (occupied) return false
-        stopping = true
+        idleStopping = true
         foregroundReady = false
         return true
     }
     @Synchronized internal fun idleStopSuperseded() {
         foregroundReady = true
-        stopping = false
+        idleStopping = false
         control.execute { launchNext() }
     }
-    fun busy() = occupied || stopping
+    fun busy() = occupied || stopping || idleStopping
     fun running() = activeSince != 0L
     fun releaseUnconfirmed() = nativeReleaseUnknown
     fun expired() = activeSince != 0L && occupied && SystemClock.elapsedRealtime() - activeSince >= 30 * 60 * 1000
-    internal fun serviceDetached() { foregroundReady = false; control.execute { if (!occupied) stopping = false } }
+    internal fun serviceDetached() { foregroundReady = false; idleStopping = false; control.execute { if (!occupied) stopping = false } }
     companion object {
         @Volatile private var instance: SharedJobs? = null
         fun get(context: Context): SharedJobs = instance ?: synchronized(this) {

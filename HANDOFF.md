@@ -29,10 +29,12 @@ were verified. These initial APKs predate the lifecycle correction below.
 First combined CI 37888964074 passed build and six APIs; API31 crashed during
 ViewerCompare controls with ForegroundServiceDidNotStartInTimeException.
 App-only shutdown/promotion fix d550360 passed final Kotlin/lint (2m48s);
-corrective combined CI 37890896503 is running.
+corrective CI37890896503 exposed transient busy admission and was superseded.
+Separate idleStopping refinement plus targeted/full-harness-reuse validation are
+being prepared; see the extraction record. Do not accept runtime yet.
 See task-results/EXTRACTION.md for exact evidence and inferred race explanation.
-Next: await the corrective build/API30–36 gates, verify new artifacts and update
-acceptance. Do not mark extraction runtime accepted yet.
+Next: final compile, targeted build/API30–32 acceptance, then source-bound full
+harness reuse for API33–36 and receipt/hash/closure checks. Do not mark extraction runtime accepted yet.
 
 A07 physical ARM64/resources/700MiB/thermal/16KiB runtime and A08 identity/signing/
 release remain pending. No release publication or UI redesign is included.

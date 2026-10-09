@@ -37,6 +37,8 @@ def verify(directory, if_unchanged=False):
              ":(exclude)scripts/saf-ui-smoke.py",
              ":(exclude)scripts/saf-finger-tap/**",
              ":(exclude)scripts/verify_reused_build.py"]
+    dirty = subprocess.check_output(["git", "status", "--porcelain", "--untracked-files=all", "--", *paths])
+    assert not dirty, "Compiled inputs have uncommitted changes; APK reuse refused"
     difference = subprocess.run(["git", "diff", "--quiet", revision, "HEAD", "--", *paths])
     if difference.returncode == 1 and if_unchanged:
         print("Compiled inputs changed; require the full APK build workflow.")

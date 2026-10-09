@@ -85,7 +85,6 @@ jobs:
           sudo udevadm trigger --name-match=kvm
       - uses: reactivecircus/android-emulator-runner@v2
         env:
-          ALFRED_INPUT_ONLY: '1'
           ALFRED_API30_PICKER_MANUAL: 'Infinix Hot 11S Android 11; owner-confirmed single/multiple/folder-subset UI on APK a1b3c42, 2026-10-08; task-results/A04.md. Replacement ALAC retest deferred by owner; no new physical acceptance claimed.'
         with:
           api-level: ${{ matrix.api }}

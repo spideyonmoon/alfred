@@ -67,3 +67,32 @@ Intermediate Kotlin/lint passed in 2m29s. Final corrected Kotlin/lint passed in 
 is running. Skip-CI source commit avoided duplicate push/PR runs. Initial artifacts
 are retained at ignored build/accepted-extraction; API31 failure diagnostics at
 build/extraction-failure-api31. These are local evidence, not source backup.
+
+## Corrective admission regression — 2026-10-09
+
+Corrective source d550360/run37890896503 built both ABIs. API30 rejected the
+future-descriptor control with transient busy instead of unsupported_version;
+API32 returned busy admitting the queue blocker. Both got through the earlier
+native/input/Forensics and Spectrogram/live/saved controls without the original
+foreground-start crash. Initial guard incorrectly reused the interruption flag
+for idle teardown. Remaining superseded jobs were cancelled to conserve CI.
+
+Refinement uses separate idleStopping state. Idle teardown clears readiness but
+does not reject bounded new submissions; they queue and wait for actual foreground
+promotion. Cancellation/interruption/release-unknown admission still uses its
+original stopping guard. Busy includes the detach window for observers. Latest
+start-ID shutdown and per-start foreground acknowledgement remain. No UI/core change.
+
+CI now supports an API list on full manual builds; default remains all seven.
+Verified APK reuse now runs the entire native/input/features/UI/jobs harness rather
+than the legacy input-only mode. Next run targets API30/31/32, then the same source-
+bound APK runs API33–36 through the reuse workflow if those first gates pass.
+No accepted gate is skipped; this avoids rebuilding between affected-version
+diagnosis and remaining-platform validation.
+
+Final idle-admission refinement Kotlin compile passed in 52s. The cancelled
+superseded run retained API30/API32 failures and no claim for remaining cancelled
+platforms. Reuse guard now also rejects uncommitted compiled inputs; local receipt
+verification was originally against committed HEAD, not the in-progress working
+refinement. Ignored validation checkout Git objects are self-contained (no old
+workspace alternates). Source/engine pins remain unchanged.
