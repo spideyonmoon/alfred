@@ -14,8 +14,10 @@ Start with [HANDOFF.md](HANDOFF.md), [BUILDING.md](BUILDING.md) and
 `python scripts/prepare_core.py` provisions an ignored, revision-bound fixture checkout.
 The adapter resolves the same revision through Cargo's Git dependency/cache.
 
-The current UI is a functional development scaffold. The owner is drafting its
-replacement on a scratchpad; repository extraction does not approve that UI.
+The owner-supplied UI v0.1 scratchpad is being integrated into Home/Settings, a
+selectable music table and separate Forensic/Metadata action tabs. See
+[the implementation record](task-results/UI_V0_1.md) for scope and validation.
+The implementation has not received runtime or owner visual acceptance.
 A07 physical-device/resources and A08 release/signing remain unaccepted.
 
 ## Provenance and licensing

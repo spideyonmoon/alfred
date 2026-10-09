@@ -1,7 +1,30 @@
 # Alfred handoff
 
-Updated 2026-10-09. Extraction complete; no jobs running. Owner drafts UI on a
-scratchpad; visuals remain unchanged and rejected. Continue here, not the core repo.
+Updated 2026-10-09. Extraction complete. Owner supplied UI_v0_1.pdf and authorized
+implementation; the first workspace integration is in development below.
+Continue here, not the core repo. Visual/physical acceptance is still pending.
+
+## Owner UI v0.1 integration - 2026-10-09
+
+Read task-results/UI_V0_1.md for scratchpad mapping and validation. Home/Settings,
+scrollable selectable music table, adjustable actions panel, Forensic/Metadata
+tabs, selected-subset routing, PNG presets and configurable Forensics prefix are
+implemented. Compare remains 2-32 variants per owner clarification. Metadata is
+read-only complete original probe JSON with explicit SAF export, bounded selection
+storage/reader leases and prior-process orphan cleanup. Original engine payloads,
+native adapter/pins and bounded job admission remain unchanged.
+
+Tag writes/conversion, image+cue/log processing and batch-directory PNG export are
+still requirements work; no placeholder actions claim to implement them. New
+input/SAF assertions are added, not yet run. Initial local Kotlin/lint passed;
+final validation is underway. A07 and release/signing remain pending.
+
+Owner merged extraction PR1 into main at b0eca40. Baseline CI37898652707 passed
+both ABI builds, native/core/lint/packaging and all API30-36 jobs. This newer fully
+green run supersedes the aggregate diagnostic-red status for the baseline only;
+the older failures and qualified evidence below are retained. UI work is on
+codex/ui-v0-1 from that exact main tree. The supplied PDF remains untracked owner
+input. New UI runtime checks require a new application build.
 
 ## Extraction complete — 2026-10-09
 

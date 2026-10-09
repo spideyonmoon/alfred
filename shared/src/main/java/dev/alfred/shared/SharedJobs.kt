@@ -103,8 +103,9 @@ class SharedJobs private constructor(private val app: Context) {
                         if (!record.terminal) record = record.copy(state = committed?.getString("state") ?: "interrupted", error = if (committed == null) "interrupted" else null)
                         save(record)
                     }
-                // Process initialization only: these are the two app-owned A04 roots.
-                listOf("input-snapshots", "input-probes").forEach { name ->
+                // Process initialization only: app-owned snapshots, transient
+                // operation output and selection-scoped metadata from the old process.
+                listOf("input-snapshots", "input-probes", "input-metadata").forEach { name ->
                     val dir = File(app.filesDir, name)
                     dir.listFiles().orEmpty().forEach { if (!it.deleteRecursively()) throw InputFailure("io_error") }
                 }

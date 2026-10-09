@@ -2,6 +2,7 @@ package dev.alfred.spectrogram
 
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.platform.LocalContext
@@ -14,13 +15,14 @@ import org.json.JSONObject
 val spectrogramOperation = Operation(FeatureId.SPECTROGRAM, "Spectrogram", 1, 1)
 
 @Composable
-fun SpectrogramScreen(inputs: FeatureInputs?, jobs: SharedJobs, records: List<JobRecord>, onExport: ResultAction, onShare: ResultAction) {
+fun SpectrogramScreen(inputs: FeatureInputs?, jobs: SharedJobs, records: List<JobRecord>, onExport: ResultAction, onShare: ResultAction,
+                      defaultPreset: String = "publication") {
     val app = LocalContext.current.applicationContext
     val coroutine = rememberCoroutineScope()
-    var preset by rememberSaveable { mutableStateOf("publication") }
+    var preset by rememberSaveable { mutableStateOf(defaultPreset) }
     var notice by remember { mutableStateOf("") }
     var submitting by remember { mutableStateOf(false) }
-    Text("Spectrogram")
+    Text("Spectrogram", style = MaterialTheme.typography.headlineMedium)
     Text("Independent bounded P06 viewing and Rust PNG export. Native channels and stereo mid, hash, intervals and presentation warnings remain in the saved wrapper and canvas.")
     Text(notice)
     if (inputs != null && inputs.selection.items.size == 1) {

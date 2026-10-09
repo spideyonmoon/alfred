@@ -14,7 +14,9 @@ import java.util.concurrent.ThreadPoolExecutor
 import java.util.concurrent.TimeUnit
 
 data class ProbeCapability(val itemId: String, val status: String, val reason: String,
-                           val hash: String? = null, val rate: Long? = null, val frames: BigInteger? = null)
+                           val hash: String? = null, val rate: Long? = null, val frames: BigInteger? = null,
+                           val codec: String? = null, val channels: String? = null, val precision: String? = null,
+                           val metadataAvailable: Boolean = false)
 data class WorkspaceState(val selection: InputSelection? = null,
                           val probes: Map<String, ProbeCapability> = emptyMap(),
                           val busy: Boolean = false, val notice: String = "", val sameTrack: Boolean = false)
@@ -65,13 +67,17 @@ class WorkspaceInput(context: Context, private val changed: (WorkspaceState) -> 
         ArrayBlockingQueue<Runnable>(1), { r -> Thread(r, "alfred-input") }, ThreadPoolExecutor.DiscardOldestPolicy())
     private val native = NativeClient()
     private val staging = File(app.filesDir, "input-snapshots")
-    private val outputs = File(app.filesDir, "input-probes").apply { mkdirs() }
+    private val outputs = File(app.filesDir, "input-metadata").apply { mkdirs() }
     private val store = InputStore(staging)
+    private val metadata = WorkspaceMetadata()
     private var generation = 0L
     private var cancellation = InputCancellation()
     private var closed = false
     @Volatile private var grants: SafSelection? = null
     private var state = WorkspaceState()
+
+    fun readMetadata(itemId: String): Any? = metadata.read(itemId)
+    fun exportMetadata(itemId: String, destination: android.net.Uri) = metadata.export(itemId, app, destination)
 
     @Synchronized fun featureInputs(): FeatureInputs? {
         val selection = state.selection ?: return null
@@ -98,6 +104,7 @@ class WorkspaceInput(context: Context, private val changed: (WorkspaceState) -> 
         state = WorkspaceState(busy = true, notice = "Reading selected documents…")
         changed(state)
         worker.execute {
+            metadata.close()
             SharedJobs.get(app).awaitReady()
             while (SharedJobs.get(app).busy()) { cancel.check(); Thread.sleep(250) }
             val previous = grants
@@ -126,13 +133,14 @@ class WorkspaceInput(context: Context, private val changed: (WorkspaceState) -> 
                     publish(current, next.copy(busy = false, notice = "Input checks complete. Header support does not verify decoded PCM."))
                 }
             } catch (error: Exception) {
+                metadata.close()
                 acquired.close()
                 if (grants === acquired) grants = null
                 publish(current, WorkspaceState(notice = failureCode(error)))
             } finally {
                 previous?.close()
                 if (!isCurrent(current)) { acquired.close(); if (grants === acquired) grants = null }
-                if (isClosed()) { grants?.close(); grants = null; native.close() }
+                if (isClosed()) { metadata.close(); grants?.close(); grants = null; native.close() }
             }
         }
     }
@@ -157,7 +165,7 @@ class WorkspaceInput(context: Context, private val changed: (WorkspaceState) -> 
         closed = true; cancellation.cancel(); generation++
         // Queue a final grant release after all provider reads have exited.
         worker.queue.clear()
-        worker.execute { grants?.close(); grants = null; native.close() }
+        worker.execute { metadata.close(); grants?.close(); grants = null; native.close() }
         worker.shutdown()
     }
 
@@ -216,13 +224,17 @@ class WorkspaceInput(context: Context, private val changed: (WorkspaceState) -> 
                     if (!sourceReleased) throw InputFailure("io_error")
                     val completed = obj(terminal)
                     if (completed["status"] != "completed") throw InputFailure(completed["status"] as? String ?: "io_error")
-                    val summary = obj(obj(completed["result"])["summary"])
+                    val result = obj(completed["result"])
+                    val summary = obj(result["summary"])
                     val technical = summary["technical"] as? Map<*, *>
                     val codec = technical?.get("codec") as? String
                     val supported = summary["status"] == "available" && codec?.lowercase() in setOf("pcm", "flac", "alac")
                     val reason = (summary["reason"] as? Map<*, *>)?.get("code") as? String
+                    cancel.check()
+                    metadata.adopt(item.id, attempt, result, output)
                     return ProbeCapability(item.id, if (supported) "available" else "unavailable", reason ?: if (supported) "codec_supported" else "unsupported_codec",
-                        snapshot.sha256, (technical?.get("sample_rate") as? BigInteger)?.checkedPositiveLong(), technical?.get("declared_frames") as? BigInteger)
+                        snapshot.sha256, (technical?.get("sample_rate") as? BigInteger)?.checkedPositiveLong(), technical?.get("declared_frames") as? BigInteger,
+                        codec, technical?.get("channels")?.toString(), technical?.get("precision")?.toString(), true)
                 }
                 Thread.sleep(250)
             }

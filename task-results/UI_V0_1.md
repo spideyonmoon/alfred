@@ -1,0 +1,71 @@
+# Owner scratchpad implementation - 2026-10-09
+
+Source: local `owner-input/UI_v0_1.pdf`, supplied by the owner. The PDF remains
+owner input; its diagram is a flow/layout reference, not final visual acceptance.
+The owner clarified that Compare retains 2-32 variants. Metadata is implemented
+read-only using the current engine contract while editing/conversion semantics
+remain unspecified.
+
+## Implemented
+
+- Home file/multiple/folder selection, separate Settings, saved feature histories.
+- Music table with select-all and individual row selection, independent horizontal
+  and vertical scrolling, and a draggable/accessible adjustable table/panel split.
+- Forensic/Metadata tabs and an actions panel for the three existing operations.
+  Selected subsets preserve URI/item identity, order, grant ownership and hashes.
+  Spectrogram accepts one chosen row from a larger selection; Compare retains its
+  explicit same-track assertion and 2-32 bound. Incomplete folders still require
+  confirmation of a smaller set before probing or operation admission.
+- Resolution uses the three existing Rust PNG presets. Appearance and default PNG
+  resolution are saved locally. Existing result/history/export/share flows remain.
+- Forensics accepts an explicitly chosen positive whole-second prefix within the
+  existing frame budget for single or multiple selected inputs.
+- Metadata studio reads the complete original probe JSON independently of DSP.
+  Every retained field/null/integer remains inspectable through ExactFields; SAF
+  export streams the original bytes. Container precision/rate/channel declarations
+  appear in the table, without a fabricated quality score or PCM verification.
+- Metadata output is selection-scoped in `input-metadata`, separate from transient
+  operation `input-probes`. Native release precedes adoption. Paths, lengths and
+  SHA-256 are checked; readers/exporters pin the directory. Replacement/close drops
+  cache owners; process initialization removes prior-process metadata orphans.
+  Maximum 32 documents / 512 MiB including native manifests, 64 MiB per document;
+  disk margin and existing probe reservation still apply. Parsing is serialized,
+  checks available heap and displays one document. This is an unmeasured engineering
+  bound, not A07 resource acceptance or a new analysis history quota.
+
+## Remaining scratchpad decisions
+
+Tag writes, conversion and audio-image plus cue processing need explicit format,
+mutation/export, error and core ownership contracts. Log/cue discovery/parsing and
+a contextual Log tab are not implemented. A batch directory PNG export needs SAF
+tree destination, naming/collision/partial-failure requirements; current per-result
+SAF export remains available. Those absent controls are not represented as working
+actions. The current PNG viewer and Compare semantics remain the accepted scope.
+
+## Validation
+
+- Initial offline Kotlin/lint passed in 5m49s (0 errors, 14 warnings, 5 hints).
+  Additional changes followed; this is an intermediate result.
+- Final Kotlin/lint/APK checks: in progress; record exact results before handoff.
+- A preexisting generated native library differed from the accepted extraction
+  APK. Before the final packaging check, replaced that ignored build input with
+  the exact ARM64 library from the hash-verified accepted extraction APK (source
+  84355e7, native/core inputs unchanged through current main). Native SHA-256:
+  af67d3757147f7e5d5cc7cef4721a769c9783aab70d787396eea1339603c29bc.
+- Python harness syntax, Kotlin UTF-8, unchanged adapter/core sources and full
+  revision manifest/lock binding passed. Initial native byte-binding check failed
+  against the preexisting build input; replacement verification passed. No native
+  rebuild claim is made for local packaging.
+- Debug input harness now covers selected subsets, independent metadata access,
+  stale selection rejection and cleanup. Real SAF harness covers Metadata tab,
+  select-all/subset, resize control and single-row Spectrogram admission. These
+  new runtime assertions are not yet executed.
+- Local ADB initially could not start inside the sandbox; normal server startup
+  succeeded outside it and listed no connected devices. No local runtime/visual
+  acceptance, physical phone checks or A07 closure.
+- Rust adapter/core/pins/lock and engine fixtures are unchanged. No native rebuild,
+  scoring, private-audio upload, release, license or signing-identity change.
+
+Next validation should build the new application sources once, exercise an
+affected API through the full generated harness, and reuse that source-bound APK
+for additional APIs only when justified. An old whole APK cannot validate this UI.

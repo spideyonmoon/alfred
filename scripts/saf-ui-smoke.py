@@ -69,6 +69,18 @@ def run(output: Path):
     def click(label):
         tap(match(label))
 
+    def panel_match(label):
+        # Only the lower actions panel scrolls; a full-screen swipe can move
+        # the track table instead. Reacquire bounds after each bounded swipe.
+        for _ in range(8):
+            current = nodes()
+            found = next((n for n in current if n.attrib.get("text") == label), None)
+            if found is not None:
+                return found
+            _, _, width, height = map(int, re.findall(r"\d+", current[0].attrib["bounds"]))
+            adb("shell", "input", "swipe", str(width // 2), str(height * 9 // 10), str(width // 2), str(height * 2 // 3), "250")
+        raise AssertionError("Workspace panel label missing: " + label)
+
     def top():
         current = nodes()
         _, _, width, height = map(int, re.findall(r"\d+", current[0].attrib["bounds"]))
@@ -129,7 +141,7 @@ def run(output: Path):
         while time.monotonic() < deadline:
             current = nodes()
             texts = [n.attrib.get("text", "") for n in current]
-            selected = selected or f"{count} selected documents" in texts
+            selected = selected or any(f"of {count} selected documents" in text for text in texts)
             if selected and any("Input checks complete" in text for text in texts):
                 complete = True
             if complete and any("persisted" in text for text in texts):
@@ -150,7 +162,7 @@ def run(output: Path):
     click("same.flac")
     checked(1)
     (output / "saf-single.xml").write_bytes((output / "saf-current.xml").read_bytes())
-    top()
+    click("Home")
     click("Choose documents")
     root()
     tap(match("same.flac"), long=True)
@@ -159,13 +171,47 @@ def run(output: Path):
     click("Select")
     checked(2)
     (output / "saf-multiple.xml").write_bytes((output / "saf-current.xml").read_bytes())
-    top()
+    click("Home")
     click("Choose folder")
     root()
     click("Use this folder")
     click("Allow")
     checked(3)
     (output / "saf-folder.xml").write_bytes((output / "saf-current.xml").read_bytes())
+    adb("shell", "screencap", "-p", "/sdcard/alfred-workspace.png")
+    adb("pull", "/sdcard/alfred-workspace.png", str(output / "workspace-display.png"))
+    # Exercise the owner scratchpad's independent metadata route with the
+    # generated selection; this must not submit a forensic/DSP operation.
+    click("Metadata")
+    match("Metadata studio")
+    tap(panel_match("Inspect metadata · same.flac"))
+    panel_match("All report fields")
+    (output / "workspace-metadata.xml").write_bytes((output / "saf-current.xml").read_bytes())
+    adb("shell", "screencap", "-p", "/sdcard/alfred-metadata.png")
+    adb("pull", "/sdcard/alfred-metadata.png", str(output / "metadata-display.png"))
+    click("Forensic")
+    current = nodes()
+    assert any(n.attrib.get("content-desc") == "Track table height" for n in current), "Resizable table control missing"
+    # Only one chosen row can enter Spectrogram from a multi-file workspace.
+    tap(match("Select all tracks"))
+    match("0 of 3 selected documents")
+    tap(match("Select same.flac"))
+    match("1 of 3 selected documents")
+    # The capability notice is rendered below the action button; verify the
+    # actual button's enabled ancestor rather than accepting its text alone.
+    def enabled_action(label):
+        for node in nodes():
+            if node.attrib.get("clickable") == "true" and node.attrib.get("enabled") == "true" and any(
+                child.attrib.get("text") == label for child in node.iter("node")
+            ):
+                return True
+        return False
+    panel_match("Spectrogram")
+    assert enabled_action("Spectrogram"), "Single-row Spectrogram action unavailable"
+    import json
+    (output / "workspace-ui-smoke.json").write_text(json.dumps({"passed": True, "api": api,
+        "metadata_without_DSP": True, "select_all_and_subset": True, "single_row_spectrogram": True,
+        "resize_control_visible": True}))
 
 
 if __name__ == "__main__":

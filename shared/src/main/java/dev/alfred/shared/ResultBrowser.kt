@@ -5,6 +5,8 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import kotlinx.coroutines.Dispatchers
@@ -70,7 +72,8 @@ fun ResultBrowser(feature: String, jobs: SharedJobs, records: List<JobRecord>, s
             }
         } catch (error: Exception) { notice = resultFailure(error) }
     }
-    Text("Saved $feature results")
+    HorizontalDivider()
+    Text("Saved $feature results", style = MaterialTheme.typography.titleLarge)
     if (notice.isNotEmpty()) Text(notice)
     records.filter { it.feature == feature && it.terminal }.reversed().forEach { Text("${it.state} · ${it.error ?: ""} · attempt ${it.attemptId}") }
     entries.forEach { entry ->

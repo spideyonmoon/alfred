@@ -2,6 +2,9 @@ package dev.alfred.forensics
 
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
 import dev.alfred.shared.*
@@ -19,11 +22,13 @@ fun ForensicsScreen(inputs: FeatureInputs?, jobs: SharedJobs, records: List<JobR
     val coroutine = rememberCoroutineScope()
     var notice by remember { mutableStateOf("") }
     var submitting by remember { mutableStateOf(false) }
-    Text("Audio Forensics")
+    Text("Audio Forensics", style = MaterialTheme.typography.headlineMedium)
     Text("Read-only metadata, native measurements and the qualified Python reference method. Scores are uncalibrated; they are not probabilities or proof of authenticity, source or sound quality. Native ancestry remains INCONCLUSIVE; evidence index is unavailable.")
     if (notice.isNotEmpty()) Text(notice)
     if (inputs != null) {
         val prefix = inputs.selection.items.mapNotNull { inputs.probes[it.id]?.rate }.maxOrNull()?.let { minOf(180L, 8_640_000L / it) }
+        var seconds by rememberSaveable(inputs.selection.id, inputs.selection.items.map { it.id }) { mutableStateOf(prefix?.toString() ?: "") }
+        val selectedSeconds = seconds.toLongOrNull()
         fun start(scope: JSONObject, retry: String? = null) {
             submitting = true
             coroutine.launch {
@@ -34,7 +39,11 @@ fun ForensicsScreen(inputs: FeatureInputs?, jobs: SharedJobs, records: List<JobR
         }
         Text("${inputs.selection.items.size} tracks · each result retains its own status, scope, channels, units and caveats.")
         Button(enabled = !submitting, onClick = { start(JSONObject().put("kind", "full")) }) { Text("Analyze full scope") }
-        if (prefix != null && prefix > 0) Button(enabled = !submitting, onClick = { start(JSONObject().put("kind", "prefix").put("seconds", prefix)) }) { Text("Analyze first $prefix seconds") }
+        if (prefix != null && prefix > 0) {
+            OutlinedTextField(seconds, onValueChange = { seconds = it }, label = { Text("Partial analysis seconds (1–$prefix)") }, singleLine = true)
+            Button(enabled = !submitting && selectedSeconds != null && selectedSeconds in 1..prefix,
+                onClick = { start(JSONObject().put("kind", "prefix").put("seconds", selectedSeconds)) }) { Text("Analyze selected prefix") }
+        }
         Text("Full-scope resource admission may reject high-rate input. Choose a prefix explicitly; its result does not describe the entire track.")
         records.lastOrNull { it.feature == "forensics" && it.terminal && it.items == inputs.selection.items.map { item -> item.id } }?.let { previous ->
             Button(enabled = !submitting, onClick = { start(JSONObject(previous.options).getJSONObject("scope"), previous.jobId) }) { Text("Retry with fresh input") }

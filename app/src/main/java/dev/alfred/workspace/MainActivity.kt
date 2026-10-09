@@ -11,10 +11,12 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.ui.Alignment
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -38,6 +40,7 @@ import dev.alfred.shared.SafPicker
 import dev.alfred.shared.WorkspaceInput
 import dev.alfred.shared.WorkspaceState
 import dev.alfred.shared.operationCapability
+import dev.alfred.shared.withSelectedItems
 import dev.alfred.spectrogram.SpectrogramScreen
 import dev.alfred.spectrogram.spectrogramOperation
 import kotlinx.coroutines.Dispatchers
@@ -72,21 +75,33 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         val model = ViewModelProvider(this)[WorkspaceModel::class.java]
+        val preferences = getSharedPreferences("workspace-ui", MODE_PRIVATE)
         setContent {
-            MaterialTheme {
+            var appearance by rememberSaveable { mutableStateOf(preferences.getString("appearance", "system") ?: "system") }
+            var preset by rememberSaveable { mutableStateOf(preferences.getString("preset", "publication") ?: "publication") }
+            val changePreset: (String) -> Unit = { value -> preset = value; preferences.edit().putString("preset", value).apply() }
+            AlfredTheme(appearance) {
                 val workspace by model.workspace
-                var checked by remember { mutableStateOf<Set<String>>(emptySet()) }
+                var checkedItems by rememberSaveable(workspace.selection?.id) {
+                    mutableStateOf(if (workspace.selection?.incomplete == true) emptyList<String>() else workspace.selection?.items.orEmpty().map { it.id })
+                }
+                val checked = checkedItems.toSet()
                 var route by rememberSaveable { mutableStateOf<String?>(null) }
                 var transferNotice by remember { mutableStateOf("") }
                 var exportAttempt by rememberSaveable { mutableStateOf<String?>(null) }
                 var exportDescriptor by rememberSaveable { mutableStateOf<String?>(null) }
+                var exportMetadataId by rememberSaveable { mutableStateOf<String?>(null) }
                 val coroutine = rememberCoroutineScope()
                 val destination = rememberLauncherForActivityResult(ResultDestination()) { uri ->
                     val attempt = exportAttempt
                     val descriptor = exportDescriptor
-                    exportAttempt = null; exportDescriptor = null
-                    if (uri != null && attempt != null && descriptor != null) coroutine.launch {
-                        try { withContext(Dispatchers.IO) { model.transfers.export(attempt, ResultDescriptor.from(org.json.JSONObject(descriptor)), uri).get() }; transferNotice = "Export completed" }
+                    val metadataId = exportMetadataId
+                    exportAttempt = null; exportDescriptor = null; exportMetadataId = null
+                    if (uri != null && (metadataId != null || (attempt != null && descriptor != null))) coroutine.launch {
+                        try { withContext(Dispatchers.IO) {
+                            if (metadataId != null) model.inputs.exportMetadata(metadataId, uri)
+                            else model.transfers.export(attempt!!, ResultDescriptor.from(org.json.JSONObject(descriptor!!)), uri).get()
+                        }; transferNotice = "Export completed" }
                         catch (error: Exception) { transferNotice = "Export failed: ${resultFailure(error)} · local result retained" }
                     }
                 }
@@ -108,85 +123,72 @@ class MainActivity : ComponentActivity() {
                     while (true) {
                         if (lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
                             jobs = model.jobs.snapshot(); progress = model.jobs.progressSnapshot()
+                            notificationAllowed = Build.VERSION.SDK_INT < 33 || checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
                         }
                         delay(250)
                     }
                 }
                 LaunchedEffect(Unit) { nativeStatus = withContext(Dispatchers.IO) { NativeBootstrap.load() } }
                 val files = rememberLauncherForActivityResult(SafPicker()) { result ->
-                    if (result != null) { route = null; checked = emptySet(); inputs.select(result) }
+                    if (result != null) { route = "music"; inputs.select(result) }
                 }
                 val single = rememberLauncherForActivityResult(SafPicker(multiple = false)) { result ->
-                    if (result != null) { route = null; checked = emptySet(); inputs.select(result) }
+                    if (result != null) { route = "music"; inputs.select(result) }
                 }
                 val folder = rememberLauncherForActivityResult(SafPicker(tree = true)) { result ->
-                    if (result != null) { route = null; checked = emptySet(); inputs.select(result) }
+                    if (result != null) { route = "music"; inputs.select(result) }
                 }
-                BackHandler(route != null) { route = null }
-                Scaffold { insets ->
-                    Column(Modifier.fillMaxSize().padding(insets).verticalScroll(rememberScrollState()).padding(20.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Text("Alfred", style = MaterialTheme.typography.headlineLarge)
-                        if (transferNotice.isNotEmpty()) Text(transferNotice)
-                        if (model.jobs.releaseUnconfirmed()) Text("Native release could not be confirmed. Work is blocked to protect its files; force-stop Alfred before reopening it.")
-                        if (!notificationAllowed) {
-                            Text("Notifications are denied. Started operations can continue; return here to cancel and inspect progress.")
-                            Button(onClick = { if (Build.VERSION.SDK_INT >= 33) notifications.launch(Manifest.permission.POST_NOTIFICATIONS) }) { Text("Allow job notifications") }
+                val selectedInputs = if (checked.isEmpty()) null else inputs.featureInputs()?.withSelectedItems(checked)
+                BackHandler(route != null) {
+                    route = if (route in FeatureId.entries.map { it.name }) "music" else null
+                }
+                Scaffold(containerColor = MaterialTheme.colorScheme.background, topBar = {
+                    Column {
+                        Row(Modifier.fillMaxWidth().statusBarsPadding().padding(start = 16.dp, end = 16.dp),
+                            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text("Alfred", style = MaterialTheme.typography.titleLarge)
+                            Row {
+                                TextButton(onClick = { route = null }) { Text("Home") }
+                                TextButton(onClick = { route = "settings" }) { Text("Settings") }
+                            }
                         }
-                        jobs.filter { !it.terminal }.forEach { job ->
-                            Text("${job.feature} · ${job.state}${if (job.cancelRequested) " · cancellation requested" else ""}")
-                            if (progress?.attemptId == job.attemptId) Text("${progress?.phase} · pass ${progress?.pass ?: "unknown"} · ${progress?.frames ?: "unknown"} frames / ${progress?.expectedFrames ?: "unknown"}")
-                            Button(onClick = { model.jobs.cancel(job.attemptId) }) { Text("Cancel operation") }
+                        if (transferNotice.isNotEmpty()) Text(transferNotice, Modifier.padding(horizontal = 16.dp))
+                        if (model.jobs.releaseUnconfirmed()) Text("Native release could not be confirmed. Work is blocked to protect its files; force-stop Alfred before reopening it.", Modifier.padding(16.dp))
+                        Column(Modifier.heightIn(max = 180.dp).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
+                            jobs.filter { !it.terminal }.forEach { job ->
+                                Text("${job.feature} · ${job.state}${if (job.cancelRequested) " · cancellation requested" else ""}")
+                                if (progress?.attemptId == job.attemptId) Text("${progress?.phase} · pass ${progress?.pass ?: "unknown"} · ${progress?.frames ?: "unknown"} frames / ${progress?.expectedFrames ?: "unknown"}")
+                                TextButton(onClick = { model.jobs.cancel(job.attemptId) }) { Text("Cancel operation") }
+                            }
                         }
-                        if (route != null) TextButton(onClick = { route = null }) { Text("Back to workspace") }
-                        val count = workspace.selection?.items?.size ?: 0
+                    }
+                }) { insets ->
+                    Column(Modifier.fillMaxSize().padding(insets)) {
                         when (route) {
-                            FeatureId.FORENSICS.name -> ForensicsScreen(inputs.featureInputs(), model.jobs, jobs, export, share) { feature ->
-                                val operation = when (feature) { FeatureId.FORENSICS -> forensicsOperation; FeatureId.SPECTROGRAM -> spectrogramOperation; FeatureId.COMPARE -> compareOperation }
-                                val capability = operationCapability(operation, workspace)
-                                if (capability.state == "available") route = feature.name else transferNotice = capability.reason
-                            }
-                            FeatureId.SPECTROGRAM.name -> SpectrogramScreen(inputs.featureInputs(), model.jobs, jobs, export, share)
-                            FeatureId.COMPARE.name -> CompareScreen(inputs.featureInputs(), workspace.sameTrack, model.jobs, jobs, export, share)
-                            else -> {
-                                Text("Audio workspace", style = MaterialTheme.typography.titleLarge)
-                                TextButton(onClick = { route = FeatureId.FORENSICS.name }) { Text("Forensics history") }
-                                Text("Select audio documents or a folder. Everything stays on this device.")
-                                Button(onClick = { single.launch(Unit) }) { Text("Choose one document") }
-                                Button(onClick = { files.launch(Unit) }) { Text("Choose documents") }
-                                Button(onClick = { folder.launch(Unit) }) { Text("Choose folder") }
-                                Text("$count selected documents")
-                                if (workspace.notice.isNotEmpty()) Text(workspace.notice)
-                                if (workspace.busy) Button(onClick = { inputs.cancel() }) { Text("Cancel input checks") }
-                                workspace.selection?.items?.forEach { item ->
-                                    Row {
-                                        if (workspace.selection?.incomplete == true) Checkbox(item.id in checked, onCheckedChange = { value ->
-                                            checked = if (value) checked + item.id else checked - item.id
-                                        })
-                                        val probe = workspace.probes[item.id]
-                                        Text("${item.name} · ${item.declaredBytes?.let { "$it bytes" } ?: "unknown length"} · ${item.grantState}\n${probe?.reason ?: "needs_input"}")
+                            "settings" -> SettingsScreen(appearance, { value -> appearance = value; preferences.edit().putString("appearance", value).apply() },
+                                preset, changePreset, nativeStatus, notificationAllowed,
+                                { if (Build.VERSION.SDK_INT >= 33) notifications.launch(Manifest.permission.POST_NOTIFICATIONS) })
+                            "music" -> MusicWorkspace(workspace, checked, { checkedItems = it.toList() }, inputs,
+                                listOf(forensicsOperation, spectrogramOperation, compareOperation), { route = it.name },
+                                { files.launch(Unit) }, { folder.launch(Unit) }, preset, changePreset,
+                                { item -> exportMetadataId = item; destination.launch("alfred-metadata.json") })
+                            in FeatureId.entries.map { it.name } -> {
+                                TextButton(onClick = { route = "music" }) { Text("Back to workspace") }
+                                Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp),
+                                    verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                    when (route) {
+                                        FeatureId.FORENSICS.name -> ForensicsScreen(selectedInputs, model.jobs, jobs, export, share) { feature ->
+                                            val operation = when (feature) { FeatureId.FORENSICS -> forensicsOperation; FeatureId.SPECTROGRAM -> spectrogramOperation; FeatureId.COMPARE -> compareOperation }
+                                            val capability = operationCapability(operation, workspace.withSelectedItems(checked))
+                                            if (capability.state == "available" && !workspace.busy) route = feature.name else transferNotice = capability.reason
+                                        }
+                                        FeatureId.SPECTROGRAM.name -> SpectrogramScreen(selectedInputs, model.jobs, jobs, export, share, preset)
+                                        FeatureId.COMPARE.name -> CompareScreen(selectedInputs, workspace.sameTrack, model.jobs, jobs, export, share)
                                     }
                                 }
-                                if (workspace.selection?.incomplete == true) Button(
-                                    enabled = checked.size in 1..31, onClick = { inputs.confirmFolder(checked) }
-                                ) { Text("Use selected documents") }
-                                if (count >= 2) Row {
-                                    Checkbox(workspace.sameTrack, onCheckedChange = { inputs.assertSameTrack(it) })
-                                    Text("These are variants of the same track")
-                                }
-                                listOf(forensicsOperation, spectrogramOperation, compareOperation).forEach { operation ->
-                                    val capability = operationCapability(operation, workspace)
-                                    Button(enabled = capability.state == "available" && !workspace.busy,
-                                        onClick = { route = operation.id.name }) { Text(operation.title) }
-                                    Text("${capability.state}: ${capability.reason}")
-                                    if (capability.state == "available" && operation.id == FeatureId.COMPARE) {
-                                        Text("A live comparison will use one agreed scope for all tracks; common prefix budget: ${capability.prefixSeconds ?: 0} seconds. Choose the scope when starting the Compare workflow.")
-                                    }
-                                }
-                                TextButton(onClick = { route = FeatureId.SPECTROGRAM.name }) { Text("Spectrogram history") }
-                                TextButton(onClick = { route = FeatureId.COMPARE.name }) { Text("Compare history") }
-                                Text("Input workspace · $nativeStatus")
                             }
+                            else -> HomeScreen({ single.launch(Unit) }, { files.launch(Unit) }, { folder.launch(Unit) },
+                                if (workspace.selection != null || workspace.busy) ({ route = "music" }) else null, { route = it.name })
                         }
                     }
                 }

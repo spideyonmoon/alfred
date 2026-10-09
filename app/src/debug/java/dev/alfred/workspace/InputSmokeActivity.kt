@@ -166,11 +166,31 @@ class InputSmokeActivity : Activity() {
             val compare = Operation(FeatureId.COMPARE, "Compare", 2, 32)
             check(operationCapability(forensics, probed).state == "available")
             check(operationCapability(compare, probed).state == "unavailable")
+            val one = probed.selection!!.items.first()
+            val subset = probed.withSelectedItems(setOf(one.id))
+            check(subset.selection!!.items == listOf(one) && subset.selection!!.id == probed.selection!!.id)
+            check(operationCapability(Operation(FeatureId.SPECTROGRAM, "Spectrogram", 1, 1), subset).state == "available")
+            check(operationCapability(forensics, probed.withSelectedItems(emptySet())).state == "needs_input")
+            val metadata = inputs.readMetadata(one.id) as Map<*, *>
+            check(metadata["status"] == "available" && metadata["technical"] is Map<*, *>)
+            check(probed.probes[one.id]!!.metadataAvailable)
+            val originalMetadata = File(filesDir, "input-metadata").walkTopDown().filter { it.name == "metadata.json" }
+                .first { ExactJson.parse(it.readBytes(), ResultStore.DOCUMENT_LIMIT.toInt()) == metadata }.readBytes()
+            val exportedMetadata = File(cacheDir, "result-shares/input-metadata-test.json").apply { parentFile!!.mkdirs(); writeText("generated") }
+            val exportUri = androidx.core.content.FileProvider.getUriForFile(this, "$packageName.results", exportedMetadata)
+            inputs.exportMetadata(one.id, exportUri)
+            check(exportedMetadata.readBytes().contentEquals(originalMetadata))
+            check(exportedMetadata.delete())
+            val previousItem = one.id
             inputs.select(picker("wav", "pipe"))
             val compatible = settled()
+            expect("input_missing") { inputs.readMetadata(previousItem) }
             check(operationCapability(compare, compatible).state == "needs_input")
             check(operationCapability(compare, compatible.copy(sameTrack = true)).state == "available")
             inputs.featureInputs()!!.let { access ->
+                val chosen = access.withSelectedItems(setOf(access.selection.items.last().id))
+                check(chosen.selection.items == access.selection.items.takeLast(1))
+                expect("input_changed") { access.withSelectedItems(setOf("missing")) }
                 access.acquire(access.selection.items.first(), UUID.randomUUID().toString(), InputCancellation()).use {
                     check(it.sha256 == encodedHash)
                 }
@@ -184,7 +204,13 @@ class InputSmokeActivity : Activity() {
             check(latest.probes.values.single().status == "available")
             checks.put("actual-codec-ALAC-vs-AAC/mixed-routing/same-track/shared-feature-acquisition/selection-change")
             check(File(filesDir, "input-snapshots").listFiles()!!.isEmpty())
-            check(File(filesDir, "input-probes").listFiles()!!.isEmpty())
+            check(File(filesDir, "input-probes").listFiles().orEmpty().isEmpty())
+            check(File(filesDir, "input-metadata").listFiles()!!.size == 1) // Current metadata remains readable.
+            inputs.close()
+            val cleanupDeadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10)
+            while (File(filesDir, "input-metadata").listFiles()!!.isNotEmpty() && System.nanoTime() < cleanupDeadline) Thread.sleep(25)
+            check(File(filesDir, "input-metadata").listFiles()!!.isEmpty())
+            checks.put("selected-subset/capability/metadata-independent/exact-metadata-export/stale-metadata-rejected/selection-cache-cleanup")
             checks.put("native-release/snapshot/probe-output-cleanup")
         } finally { inputs.close() }
     }

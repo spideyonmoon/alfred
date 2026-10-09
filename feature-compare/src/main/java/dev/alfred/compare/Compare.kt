@@ -4,6 +4,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.platform.LocalContext
@@ -22,7 +23,7 @@ fun CompareScreen(inputs: FeatureInputs?, sameTrack: Boolean, jobs: SharedJobs, 
     var seconds by rememberSaveable(inputs?.selection?.id) { mutableStateOf(inputs?.let { CompareWork.prefixBudget(it) }?.toString() ?: "") }
     var notice by remember { mutableStateOf("") }
     var submitting by remember { mutableStateOf(false) }
-    Text("Audio Compare")
+    Text("Audio Compare", style = MaterialTheme.typography.headlineMedium)
     Text("Reference-method comparison of variants of one track. The Rust method checks version, domain and actual coverage before ranking. Its tuple is uncalibrated; it is not a perceptual quality metric. Exact ties retain input order; incompatible/unavailable results have no winner.")
     Text(notice)
     if (inputs != null && sameTrack && inputs.selection.items.size in 2..32) {
