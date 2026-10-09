@@ -134,4 +134,6 @@ finally:
             (output / name).write_text(adb("shell", "run-as", "dev.alfred.workspace.debug", "cat", "files/" + name))
         except subprocess.CalledProcessError:
             pass
-    (output / "logcat.txt").write_text(adb("logcat", "-d"))
+    # Diagnostics can contain non-UTF-8 bytes from platform/native log producers.
+    # Preserve the exact stream; decoding it must not replace completed acceptance.
+    (output / "logcat.txt").write_bytes(subprocess.check_output(["adb", "logcat", "-d"], stderr=subprocess.STDOUT))

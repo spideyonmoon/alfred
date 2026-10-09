@@ -1,57 +1,56 @@
 # Alfred handoff
 
-Updated 2026-10-09. Owner requested extraction to C:\Users\Bishal\code\alfred,
-https://github.com/spideyonmoon/alfred. Branch codex/extract-android; PR1 open.
-Owner rejected the scaffold's visual quality and is drafting UI on a scratchpad.
-Preserve visuals until the design arrives. Extraction is implemented; final
-remaining-platform acceptance is running, not yet complete.
+Updated 2026-10-09. Extraction complete; no jobs running. Owner drafts UI on a
+scratchpad; visuals remain unchanged and rejected. Continue here, not the core repo.
 
-## Current source and running job
+## Extraction complete — 2026-10-09
 
-Compiled app source: 84355e7ff83756e8495c1f372d483486cded6924. Later commits only
-change workflow/harness/docs; strict source/hash/core guard verified APK reuse.
-Engine 0.32.0: 5c5ce00d44f6759dd6a7319804b5f7a21079d1b4 via Git dependency,
-native Cargo.lock and core-dependency.json. .core is a clean ignored validation
-checkout with self-contained Git objects; generated fixtures remain in the engine.
-App/shared/three features/JNI adapter/scripts/Android workflows are here. Core-side
-removal/pointers pushed at 0a41632; core PR1 open. Neither PR is merged. Original
-history, standalone engine/schemas/fixtures and unrelated owner cleanup are preserved.
-GPLv3 destination license and extracted MIT attribution retained. No private audio
-or private signing keys in source. No release publication or UI redesign included.
+Alfred now owns app/shared/three features/JNI adapter/build drivers/Android tests
+in C:\Users\Bishal\code\alfred, branch codex/extract-android, remote
+https://github.com/spideyonmoon/alfred. Core stays independent and is consumed by
+full-revision Git dependency plus app Cargo.lock. No vendoring/refactor/private
+audio transfer. Engine 0.32.0 pin 5c5ce00d44f6759dd6a7319804b5f7a21079d1b4;
+accepted compiled app84355e7ff83756e8495c1f372d483486cded6924. Later changes are
+workflow/harness/docs, source-reuse guarded; no UI visual changes.
 
-Build checkpoint 37892173286: both ABI links/APKs, strict pins/lint/fixtures/
-alignment/signatures, independent core CLI/no-CLI and adapter controls passed;
-API30 and API31 full suites passed. API32 passed all22 backend controls but its
-single-snapshot PNG visibility check ran with the image below the viewport.
-Harness-only bounded scroll/wait correction is committed; product UI is unchanged.
+Both ARM64/x86_64 links/APKs, strict pins/lint/assets/alignment/signatures, core
+CLI/no-CLI and native adapter controls passed in checkpoint 37892173286. API 30/31
+full suites passed there; API 32–36 functional suites passed in verified APK reuse
+37893506220. Every one of seven receipts has the same22 viewer/Compare controls,
+native/input/Forensics success, actual PNG/history/Compare UI flags and eight
+jobs/permission/recovery/timeout groups. API 30 real picker still uses older manual
+Hot11S evidence; no new physical-picker or ARM64/16KiB/RSS/thermal acceptance.
 
-Running reuse CI37893506220 verifies this exact APK then runs full harness on
-API32/33/34/35/36. Source guard passed; build job intentionally skipped; five
-emulator jobs running. Only already-built APKs are used. The indexed full workflow
-supports reuse_build_run and apis inputs. The separate manual-only runtime workflow
-is not indexed on the default branch yet (main still has the original license).
-Use alfred-android.yml reuse mode until default-branch integration; no main/settings
-change is required. No additional build or API30/31 repeat needed.
+CI status is deliberately qualified: checkpoint's original API 32 UI failure was
+an image-below-viewport harness assumption, fixed and passed in reuse. Reuse's
+API 34 job completed all acceptance then failed collecting non-UTF8 logcat bytes.
+Both aggregate runs remain red; they are not claimed fully green. Diagnostic-only
+collector now preserves raw bytes; syntax/host malformed-UTF8 reproduction and
+byte-retention check passed. Android collector rerun not performed to conserve
+usage; no accepted functional suite was skipped or repeated just for diagnostics.
 
-## Checks and retained failures
+Extraction exposed a pre-existing idle foreground-service crash. App-only fix
+uses newest start-ID shutdown, per-request promotion and separate idle detach
+state so bounded new jobs queue until ready. Intermediate overly strict busy
+guard failure/cancelled run and all earlier evidence remain in the history below.
+No engine/adapter/payload/admission-limit changes. Final compile 52s passed;
+preceding Kotlin/lint 2m48s passed (initial5m57s). Windows host Rust linking failed
+ld204 including documented GCC retry; Linux checks passed. Source/83 lock entries/
+Python syntax/local links/whitespace and dirty-source reuse rejection passed.
 
-Static lock/source/syntax/local-link/whitespace checks passed; 83 non-engine lock
-entries unchanged. Kotlin/lint initial5m57s, servicefix2m48s; final idle-admission
-compile52s passed. Windows Rust host dependency linking failed (ld204 including
-documented GCC retry); Linux core/native controls passed instead.
-First CI37888964074 exposed API31 foreground-start crash. Focused service fix uses
-latest start ID, per-request promotion and serialized idle detach. CI37890896503
-exposed transient busy admission from an overly strict guard; it was cancelled.
-Separate idleStopping now lets bounded new requests queue until promotion, retaining
-the original interruption/release-unknown guard. Existing feature/queue/recovery
-controls cover these paths; no engine, adapter, payload, fixtures or limits changed.
-Details and all failure boundaries: task-results/EXTRACTION.md.
+Accepted local artifacts: ignored build/accepted-extraction-final; all 7 receipts:
+build/extraction-evidence; summary: build/extraction-acceptance.json. Old failed
+artifacts remain separately. These are local evidence, not Git backup. Three build
+attempts and one build-free reuse stage were needed; no duplicate push/PR runs.
+Default branch still has initial license; use indexed alfred-android.yml with
+reuse_build_run/apis until integration. Separate runtime workflow becomes indexed
+after default-branch integration. Neither PR is merged or release published.
 
-Next: await reuse CI37893506220, inspect actual failures if any; download API30/31
-receipts from checkpoint37892173286 and API32–36 from reuse37893506220. Verify all
-22 controls/native/input/Forensics receipts and final APK/source bindings. Then
-close both handoffs/roadmaps and update PR descriptions without triggering rebuilds.
-Local evidence: ignored build/accepted-extraction-final, earlier accepted-extraction
-and accepted-extraction-fixed plus failure-api folders. These are not source backup.
-A07 physical ARM64/RSS/thermal/700MiB/16KiB and A08 identity/signing/release remain.
-Next owner UI design integration, then physical acceptance; no visual approval yet.
+Next: owner's UI scratchpad integration in Alfred. Current visuals are rejected
+and unchanged. A07 physical resources/device acceptance and A08 identity/signing/
+release remain pending. Core research/delivery continues independently in audio-forensic-rust.
+
+Read README.md, ROADMAP.md, ANDROID_CONTRACT.md, BUILDING.md and
+task-results/EXTRACTION.md before continuing. The full failure/check history is
+retained there. PRs: https://github.com/spideyonmoon/alfred/pull/1 and
+https://github.com/spideyonmoon/audio-forensic-rust/pull/1.

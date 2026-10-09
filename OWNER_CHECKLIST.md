@@ -1,5 +1,12 @@
 # Bishal's part of the roadmap
 
+Current2026-10-09: Alfred repository extraction is complete; source84355e7 APKs
+and receipts are under ignored build/accepted-extraction-final here. Functional
+Android11–16 gates passed; API34 post-test log capture failure is explicitly recorded
+in HANDOFF.md. UI owner scratchpad is pending; visuals are not approved. A07/U03
+physical acceptance and A08/U04 signing/release remain. Older evidence below refers
+to the original core checkout and APKs, not this current physical acceptance.
+
 Updated 2026-10-06. Fill this file in directly, or tell the agent your answers
 and ask it to update the file. Unknowns do not stop unrelated implementation.
 

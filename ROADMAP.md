@@ -1,22 +1,20 @@
 # Alfred roadmap
 
-Updated 2026-10-09. Independent engine: Audio Forensic Rust 0.32.0, pinned revision
-in core-dependency.json. Android 11–16, FLAC/WAV/ALAC-M4A; offline workspace.
+Updated 2026-10-09. Offline Android11–16 workspace; FLAC/WAV/ALAC-M4A.
+Engine 0.32.0 pinned in core-dependency.json; independent core ownership preserved.
 
-- A01–A06b: functional integration accepted in the original repository. Retained
-  task records preserve those exact checks and evidence boundaries.
-- Repository extraction: owner requested now; source at 0388042, combined CI
-  37888964074 passed builds/six APIs but API31 crashed; focused lifecycle fix d550360 passed local Kotlin/lint; corrective CI 37890896503 running. Core stays independently consumable. See HANDOFF.md.
-- UI: owner is drafting a scratchpad. Current functional scaffold is visually
-  rejected. Implement the agreed design when provided; do not invent broader
-  Spectrogram/Compare requirements or alter numerical/ownership contracts.
-- A07: physical-device/resource gate remains pending. Redmi 13 4G/Android 16 and
-  Hot 11S/Android 11 evidence must identify the actual tested APK. Emulator and
-  linked APK results do not establish physical memory/thermal/16-KiB acceptance.
-- A08: after A07/U03, reproducible candidate, notices, app/engine versions, final
-  identity, owner-held signing and release handoff. Publication needs owner approval.
+- A01–A06b: original functional integration accepted; history in task-results.
+- Repository extraction: DONE. Both ABI builds and all seven functional platform
+  suites accepted against source 84355e7. Post-test API 34 diagnostic-only CI failure
+  is recorded/fixed without another heavy run; see HANDOFF.md for exact boundaries.
+- UI: owner is drafting the replacement. Current scaffold's visuals are rejected.
+  Implement agreed design when supplied; preserve engine/host contracts and do not
+  invent broader competitive viewer/comparison requirements.
+- A07: physical ARM64, device/RSS/thermal/700MiB/16KiB resource acceptance remains.
+  Identify tested APK/device explicitly; generated emulator results are not phones.
+- A08: after A07/U03, candidate/notices/identity/owner-held signing/release handoff.
+  Extraction does not close release gates. Publication requires owner authorization.
 
-DSD, calibration/MQA research and future tools remain deferred/separate. Original
-[task cards](https://github.com/spideyonmoon/audio-forensic-rust/blob/79470a3/ROADMAP_TASKS.md)
-and [A01](task-results/A01.md) explain the initial contracts. Subsequent Android
-decisions belong here; core research/delivery stays in the engine repository.
+DSD, calibration/MQA research and future tools remain separate/deferred. Subsequent
+Android decisions belong here; core research/delivery stays in audio-forensic-rust.
+No active CI jobs. PR1 is open; main branch is not yet integrated.
