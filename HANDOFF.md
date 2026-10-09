@@ -40,3 +40,12 @@ harness reuse for API33–36 and receipt/hash/closure checks. Do not mark extrac
 
 A07 physical ARM64/resources/700MiB/thermal/16KiB runtime and A08 identity/signing/
 release remain pending. No release publication or UI redesign is included.
+
+Standalone manual-only runtime workflow dispatch returned HTTP404 because this
+new repository's default branch still contains only its initial license; GitHub
+has not indexed that workflow yet. The already-indexed full workflow now accepts
+reuse_build_run: it skips compilation, verifies exact source/core/APK bindings,
+then runs the selected full emulator harness. Use that gateway until default-branch
+integration. No repository settings or main branch changed; no rebuild needed.
+Next dispatch alfred-android.yml with reuse_build_run=37892173286 and
+apis=[32,33,34,35,36].

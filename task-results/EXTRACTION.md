@@ -113,3 +113,12 @@ Next: full verified-source APK reuse on API32/33/34/35/36. API30/31 already pass
 against this APK. Do not repeat builds or those accepted platform jobs. Both APK
 hashes/core pins and current committed compiled-source equality passed locally;
 uncommitted compiled-source rejection also passed. No oracle regenerated.
+
+Standalone manual-only runtime workflow dispatch returned HTTP404 because this
+new repository's default branch still contains only its initial license; GitHub
+has not indexed that workflow yet. The already-indexed full workflow now accepts
+reuse_build_run: it skips compilation, verifies exact source/core/APK bindings,
+then runs the selected full emulator harness. Use that gateway until default-branch
+integration. No repository settings or main branch changed; no rebuild needed.
+Next dispatch alfred-android.yml with reuse_build_run=37892173286 and
+apis=[32,33,34,35,36].

@@ -2,6 +2,10 @@ name: Alfred Android compatibility
 on:
   workflow_dispatch:
     inputs:
+      reuse_build_run:
+        description: Optional existing verified APK build run; skips compilation
+        required: false
+        type: string
       apis:
         description: JSON array of affected API levels; default checks Android 11–16
         required: false
@@ -13,11 +17,13 @@ on:
     paths: ['app/**', 'shared/**', 'feature-*/**', 'native/**', 'scripts/**', 'gradle/**', '*.gradle.kts', 'gradle.properties', 'gradlew*', 'core-dependency.json', '!**/*.md', '.github/workflows/alfred-android.yml', 'native/Cargo.lock']
 permissions:
   contents: read
+  actions: read
 concurrency:
   group: alfred-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 jobs:
   build:
+    if: inputs.reuse_build_run == ''
     runs-on: ubuntu-24.04
     timeout-minutes: 40
     steps:
@@ -74,8 +80,24 @@ jobs:
           name: alfred-dependency-verification
           path: build/reports/dependency-verification/
           retention-days: 7
+  verify-source:
+    if: inputs.reuse_build_run != ''
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          name: alfred-scaffold-api30
+          run-id: ${{ inputs.reuse_build_run }}
+          github-token: ${{ github.token }}
+          path: build/verified-reuse
+      - name: Require identical compiled source, engine pin and verified APK hashes
+        run: python3 scripts/verify_reused_build.py build/verified-reuse
   emulator:
-    needs: build
+    needs: [build, verify-source]
+    if: always() && !cancelled() && (needs.build.result == 'success' || needs.verify-source.result == 'success')
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     strategy:
@@ -89,6 +111,8 @@ jobs:
         with:
           name: alfred-scaffold-api30
           path: build/ci
+          run-id: ${{ inputs.reuse_build_run || github.run_id }}
+          github-token: ${{ github.token }}
       - name: Enable KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
