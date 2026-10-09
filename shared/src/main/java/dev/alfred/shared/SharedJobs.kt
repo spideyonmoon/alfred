@@ -223,11 +223,23 @@ class SharedJobs private constructor(private val app: Context) {
         pending.toList().forEach { it.leases.forEach { lease -> lease.close() }; save(it.record.copy(state = "interrupted", error = code)) }; pending.clear()
         occupied = nativeReleaseUnknown || active != null; if (!occupied) stopping = false
     } } }
-    fun busy() = occupied
+    /** Reserve the idle shutdown until onDestroy detaches the actual service. */
+    @Synchronized internal fun stopIfIdle(): Boolean {
+        if (occupied) return false
+        stopping = true
+        foregroundReady = false
+        return true
+    }
+    @Synchronized internal fun idleStopSuperseded() {
+        foregroundReady = true
+        stopping = false
+        control.execute { launchNext() }
+    }
+    fun busy() = occupied || stopping
     fun running() = activeSince != 0L
     fun releaseUnconfirmed() = nativeReleaseUnknown
     fun expired() = activeSince != 0L && occupied && SystemClock.elapsedRealtime() - activeSince >= 30 * 60 * 1000
-    internal fun serviceDetached() { foregroundReady = false; control.execute { if (!busy()) stopping = false } }
+    internal fun serviceDetached() { foregroundReady = false; control.execute { if (!occupied) stopping = false } }
     companion object {
         @Volatile private var instance: SharedJobs? = null
         fun get(context: Context): SharedJobs = instance ?: synchronized(this) {

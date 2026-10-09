@@ -1,46 +1,37 @@
 # Alfred handoff
 
-Updated 2026-10-09. Owner requested extraction now into
-`C:\Users\Bishal\code\alfred`, remote https://github.com/spideyonmoon/alfred.
-Branch `codex/extract-android`. The owner is drafting the UI on a scratchpad;
-preserve the current functional scaffold until those designs are supplied.
-The owner rejected its visual quality; functional A06 acceptance is not UI approval.
+Updated 2026-10-09. Owner requested standalone extraction to
+`C:\Users\Bishal\code\alfred`, https://github.com/spideyonmoon/alfred.
+Branch codex/extract-android; [PR1](https://github.com/spideyonmoon/alfred/pull/1).
+The owner is drafting UI on a scratchpad. Existing scaffold's visual quality was
+rejected; leave visuals unchanged until those designs arrive.
 
-## Current extraction
+## Current extraction and checks
 
-App/shared/three features/native adapter/build drivers/generated-input harnesses
-are at this repository root. Engine remains independently owned in
-audio-forensic-rust, pinned to 5c5ce00d44f6759dd6a7319804b5f7a21079d1b4.
-Native manifest, lockfile and core-dependency.json must agree. `.core` is an ignored
-validation checkout for unchanged generated fixtures, not vendored source.
-Build scripts, APK verifier, fixture consumers and CI use standalone paths.
-Android licenses/signing defaults/toolchain pins and admission limits are preserved.
-GPLv3 destination LICENSE preserved; extracted MIT attribution in LICENSE-MIT.
+Android app/shared/three features/adapter/build drivers/harnesses are at this
+repository root. Independent engine 0.32.0 stays in audio-forensic-rust, pinned
+to 5c5ce00d44f6759dd6a7319804b5f7a21079d1b4 in native manifest, lock and
+core-dependency.json. Ignored clean .core checkout supplies unchanged generated
+fixtures; Cargo resolves engine source through its own Git cache. No vendoring.
+GPLv3 destination license preserved; extracted MIT notice retained. No private
+audio or private signing keys in source. Core-side removal/pointers pushed at
+0a41632; [core PR1](https://github.com/spideyonmoon/audio-forensic-rust/pull/1).
+Core engine/schemas/fixtures are unchanged; old local caches and owner cleanup
+edits preserved. Original history remains in the core repository.
 
-Original accepted Android 11–16 behavior: core CI 37820435450, 22 feature controls
-on every API 30–36 plus retained input/jobs/native/Forensics suites. This historical
-evidence does not prove extracted packaging. A07 physical ARM64/resources/16-KiB
-runtime and A08 signing/release remain pending. No private recordings are copied.
+Static dependency/83 unchanged lock entries/source/syntax/link/whitespace checks
+passed. Initial Kotlin/lint passed 5m57s (0 errors/12 warnings/4 hints). Linux core
+CLI/no-CLI and adapter controls passed. Windows host dependency linking failed
+with collect2/ld exit204 including the documented GCC retry; no further retries.
+Both extracted ABI APK hashes/app+engine receipts and initial docs source reuse
+were verified. These initial APKs predate the lifecycle correction below.
 
-Extraction verification is in progress. Next: resolve pinned lockfile, host native
-controls, local Kotlin/lint, standalone core CLI/no-CLI checks; then one full
-combined CI build/API 30–36 run in this repository. Record receipts and failures
-before acceptance. No release publication or UI redesign is included.
+First combined CI 37888964074 passed build and six APIs; API31 crashed during
+ViewerCompare controls with ForegroundServiceDidNotStartInTimeException.
+App-only shutdown/promotion fix is being locally checked before corrective CI.
+See task-results/EXTRACTION.md for exact evidence and inferred race explanation.
+Next: final Kotlin/lint, commit/push fix, one cached combined API30–36 run, verify
+new artifacts and update acceptance. Do not mark extraction runtime accepted yet.
 
-## Checks before first extraction CI
-
-Pinned Git dependency resolved; only the audio-forensic source entry changed in
-Cargo.lock (83 other package entries identical). Python syntax, local Markdown
-links and 28 unchanged Kotlin/Gradle-wrapper files passed. `prepare_core.py`
-validated the clean fixture checkout. Whitespace passed.
-Local Windows native and CLI checks failed while linking dependency build scripts:
-MinGW collect2/ld exit 204, including the documented GCC-driver retry. No further
-local linker retries; Linux CI runs both core configurations and adapter controls.
-Local Kotlin/lint passed (5m57s) with existing caches and the previous accepted native
-library for compile-only purposes. That library is not extraction linking evidence.
-
-
-Extraction source 0388042 is pushed. Combined CI 37888964074 is running:
-https://github.com/spideyonmoon/alfred/actions/runs/37888964074. Linux standalone
-core CLI/no-CLI checks and native adapter controls have passed; both ABI packaging
-and emulator jobs remain pending. Core-side move is pushed at 0a41632.
+A07 physical ARM64/resources/700MiB/thermal/16KiB runtime and A08 identity/signing/
+release remain pending. No release publication or UI redesign is included.

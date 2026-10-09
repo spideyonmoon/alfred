@@ -6,7 +6,7 @@ in core-dependency.json. Android 11–16, FLAC/WAV/ALAC-M4A; offline workspace.
 - A01–A06b: functional integration accepted in the original repository. Retained
   task records preserve those exact checks and evidence boundaries.
 - Repository extraction: owner requested now; source at 0388042, combined CI
-  37888964074 underway. Core stays independently consumable. See HANDOFF.md.
+  37888964074 passed builds/six APIs but API31 crashed; focused lifecycle fix in progress. Core stays independently consumable. See HANDOFF.md.
 - UI: owner is drafting a scratchpad. Current functional scaffold is visually
   rejected. Implement the agreed design when provided; do not invent broader
   Spectrogram/Compare requirements or alter numerical/ownership contracts.

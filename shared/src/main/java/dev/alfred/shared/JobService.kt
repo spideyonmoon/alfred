@@ -20,10 +20,20 @@ class JobService : Service() {
     private lateinit var jobs: SharedJobs
     private var wake: PowerManager.WakeLock? = null
     private var promoted = false
+    private var lastStartId = 0
     private var notifiedAttempt: String? = null
     private val tick = object : Runnable {
         override fun run() {
-            if (!jobs.busy()) { stopForeground(STOP_FOREGROUND_REMOVE); stopSelf(); return }
+            // Claim shutdown under the same lock as admission. A new request must
+            // not start against a service whose foreground promotion was removed.
+            if (jobs.stopIfIdle()) {
+                // A foreground request may already be in Android's delivery queue.
+                // Keep this service promoted until that newer start is delivered.
+                if (stopSelfResult(lastStartId)) {
+                    promoted = false; stopForeground(STOP_FOREGROUND_REMOVE); return
+                }
+                jobs.idleStopSuperseded()
+            }
             if (jobs.releaseUnconfirmed()) { timeout(); return }
             if (jobs.expired()) { timeout(); return }
             val attempt = jobs.snapshot().firstOrNull { !it.terminal && it.state != "queued" }?.attemptId
@@ -40,11 +50,14 @@ class JobService : Service() {
     override fun onCreate() { super.onCreate(); jobs = SharedJobs.get(this) }
     override fun onBind(intent: Intent?): IBinder? = null
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        lastStartId = startId
         if (intent?.action == "cancel") {
             intent.getStringExtra("attempt")?.let { jobs.cancel(it) }
             return START_NOT_STICKY
         }
-        if (!promoted) {
+        // Acknowledge every startForegroundService request, including delivery
+        // to an existing instance after a previous job became idle.
+        run {
             try {
                 val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
                 manager.createNotificationChannel(NotificationChannel("audio-jobs", "Audio operations", NotificationManager.IMPORTANCE_LOW))
@@ -56,10 +69,12 @@ class JobService : Service() {
                     Build.VERSION.SDK_INT >= 34 -> startForeground(5, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
                     else -> startForeground(5, notification)
                 }
-                wake = (getSystemService(Context.POWER_SERVICE) as PowerManager).newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Alfred:audio-jobs")
-                    .apply { acquire(30 * 60 * 1000L) }
-                promoted = true
-                handler.post(tick)
+                if (!promoted) {
+                    wake = (getSystemService(Context.POWER_SERVICE) as PowerManager).newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Alfred:audio-jobs")
+                        .apply { acquire(30 * 60 * 1000L) }
+                    promoted = true
+                    handler.post(tick)
+                }
             } catch (_: RuntimeException) {
                 jobs.interrupt("service_start_rejected"); stopSelf(); return START_NOT_STICKY
             }
