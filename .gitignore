@@ -1,0 +1,12 @@
+.gradle/
+.kotlin/
+**/build/
+local.properties
+native/target/
+*.jks
+*.keystore
+
+.tools/
+.core/
+emulator-evidence/
+**/__pycache__/
