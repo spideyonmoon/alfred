@@ -62,7 +62,8 @@ confirms the latest-start-ID shutdown contract (checked 2026-10-09). The exact
 interleaving is inferred from the crash and the unlocked shutdown/admission paths;
 it was not deterministically reproduced on a physical device.
 
-Intermediate Kotlin/lint passed in 2m29s. Final corrected Kotlin/lint is running;
-corrective cached combined CI will be queued after source commit. Initial artifacts
+Intermediate Kotlin/lint passed in 2m29s. Final corrected Kotlin/lint passed in 2m48s. Corrected source d550360 is pushed;
+[one manual corrective combined CI](https://github.com/spideyonmoon/alfred/actions/runs/37890896503)
+is running. Skip-CI source commit avoided duplicate push/PR runs. Initial artifacts
 are retained at ignored build/accepted-extraction; API31 failure diagnostics at
 build/extraction-failure-api31. These are local evidence, not source backup.
