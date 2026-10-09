@@ -96,3 +96,20 @@ platforms. Reuse guard now also rejects uncommitted compiled inputs; local recei
 verification was originally against committed HEAD, not the in-progress working
 refinement. Ignored validation checkout Git objects are self-contained (no old
 workspace alternates). Source/engine pins remain unchanged.
+
+## Affected-platform checkpoint and viewport correction
+
+Source84355e7/run37892173286: both ABI builds and API30/API31 full suites passed.
+API32 passed all 22 backend controls and Forensics UI checks, then the one-shot
+PNG visibility assertion failed. Saved XML showed the decoded-preview status
+paragraph at the viewport bottom; the image follows it in SpectrogramPreview.
+No foreground-start crash was present. This is a harness viewport assumption:
+it inspected one hierarchy snapshot rather than scrolling to the actual image.
+Changed only features-ui-smoke.py to bounded scroll/wait for that exact content
+description; it still fails if the image never becomes visible, and still captures
+the screenshot. Product UI and compiled sources are unchanged. Python syntax passed.
+
+Next: full verified-source APK reuse on API32/33/34/35/36. API30/31 already passed
+against this APK. Do not repeat builds or those accepted platform jobs. Both APK
+hashes/core pins and current committed compiled-source equality passed locally;
+uncommitted compiled-source rejection also passed. No oracle regenerated.

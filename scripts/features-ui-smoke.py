@@ -64,8 +64,17 @@ def run(output, receipt):
         find("Measurement: analyzed")
         click("3: png")
         find("Scaled viewing preview")
-        image = next((n for n in nodes() if n.attrib.get("content-desc") == "Calibrated Rust spectrogram PNG"), None)
-        assert image is not None, "Rust PNG was not displayed"
+        # The decoded image follows the status paragraph and can still be below
+        # the viewport when find(status) returns. Observe the actual image with
+        # the same bounded scroll/wait policy used for other visible controls.
+        image = None
+        for _ in range(20):
+            image = next((n for n in nodes() if n.attrib.get("content-desc") == "Calibrated Rust spectrogram PNG"), None)
+            if image is not None:
+                break
+            swipe(True)
+            time.sleep(.5)
+        assert image is not None, "Rust PNG was not displayed after bounded scroll/wait"
         adb("shell", "screencap", "-p", "/sdcard/alfred-spectrogram.png")
         adb("pull", "/sdcard/alfred-spectrogram.png", str(output / "spectrogram-display.png"))
         click("Open completed · " + viewer["old_attempt"], up=False)
