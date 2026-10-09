@@ -16,8 +16,17 @@ native adapter/pins and bounded job admission remain unchanged.
 
 Tag writes/conversion, image+cue/log processing and batch-directory PNG export are
 still requirements work; no placeholder actions claim to implement them. New
-input/SAF assertions are added, not yet run. Initial local Kotlin/lint passed;
-final validation is underway. A07 and release/signing remain pending.
+input/SAF assertions are added, not yet run. Offline Kotlin/lint/assemble and final
+ARM64 APK fixture/alignment/signature checks passed (0 lint errors, 14 warnings,
+5 hints); native library is byte-verified reuse of the accepted extraction build.
+No local Android device is connected. No new CI/runtime/visual acceptance or A07
+closure. Review APK/hash and exact intermediate checks are in UI_V0_1.md.
+
+Local UI source commit ee704d2 is ready. Automatic approval review rejected the
+push to spideyonmoon/alfred because this source/docs egress was not specifically
+authorized. No push or new CI dispatch executed. Ask the owner to approve the
+branch push and a single API31 manual checkpoint; conserve CI by avoiding auto
+push/PR runs with skip-ci commits. PDF remains owner input, excluded from commits.
 
 Owner merged extraction PR1 into main at b0eca40. Baseline CI37898652707 passed
 both ABI builds, native/core/lint/packaging and all API30-36 jobs. This newer fully

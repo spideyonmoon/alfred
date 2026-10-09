@@ -46,7 +46,14 @@ actions. The current PNG viewer and Compare semantics remain the accepted scope.
 
 - Initial offline Kotlin/lint passed in 5m49s (0 errors, 14 warnings, 5 hints).
   Additional changes followed; this is an intermediate result.
-- Final Kotlin/lint/APK checks: in progress; record exact results before handoff.
+- Offline Kotlin/lint/assemble passed in 5m14s; final product/panel-scroll and
+  verified native packaging check passed in 1m29s. Final debug metadata-export
+  assertion Kotlin/assemble passed in 59s. Lint: 0 errors, 14 warnings, 5 hints.
+- Final ARM64 review APK: app/build/outputs/apk/debug/app-debug.apk, SHA-256
+  0cb4c15faadb4243e83d7c56a7da20cf8a026a3a0b0553aa4403c00c450451f4.
+  Generated fixture byte checks, all native ELF/ZIP 16 KiB alignment, zipalign
+  and development signature verification passed. Runtime is not tested; native
+  is reused from the accepted extraction APK, not newly linked locally.
 - A preexisting generated native library differed from the accepted extraction
   APK. Before the final packaging check, replaced that ignored build input with
   the exact ARM64 library from the hash-verified accepted extraction APK (source
@@ -59,7 +66,7 @@ actions. The current PNG viewer and Compare semantics remain the accepted scope.
 - Debug input harness now covers selected subsets, independent metadata access,
   stale selection rejection and cleanup. Real SAF harness covers Metadata tab,
   select-all/subset, resize control and single-row Spectrogram admission. These
-  new runtime assertions are not yet executed.
+  new runtime assertions are not yet executed. No new CI run was started.
 - Local ADB initially could not start inside the sandbox; normal server startup
   succeeded outside it and listed no connected devices. No local runtime/visual
   acceptance, physical phone checks or A07 closure.
@@ -69,3 +76,12 @@ actions. The current PNG viewer and Compare semantics remain the accepted scope.
 Next validation should build the new application sources once, exercise an
 affected API through the full generated harness, and reuse that source-bound APK
 for additional APIs only when justified. An old whole APK cannot validate this UI.
+
+## Push / CI authorization boundary
+
+Source commit ee704d2 is on local codex/ui-v0-1 from the owner's merged main.
+Automatic approval review rejected pushing that branch to spideyonmoon/alfred:
+the source/docs payload's egress was not specifically authorized. Push and the
+dependent one-API31 manual workflow dispatch did not execute. Owner approval is
+required to proceed; no workaround is attempted. The PDF, APK, caches, native
+build inputs and private audio are excluded from the Git commit.
