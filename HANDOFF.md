@@ -22,11 +22,19 @@ ARM64 APK fixture/alignment/signature checks passed (0 lint errors, 14 warnings,
 No local Android device is connected. No new CI/runtime/visual acceptance or A07
 closure. Review APK/hash and exact intermediate checks are in UI_V0_1.md.
 
-Local UI source commit ee704d2 is ready. Automatic approval review rejected the
-push to spideyonmoon/alfred because this source/docs egress was not specifically
-authorized. No push or new CI dispatch executed. Ask the owner to approve the
-branch push and a single API31 manual checkpoint; conserve CI by avoiding auto
-push/PR runs with skip-ci commits. PDF remains owner input, excluded from commits.
+UI source ee704d2 / validation notes 84e1171 are pushed to codex/ui-v0-1. Automatic
+approval review initially rejected that push for missing explicit source/docs
+egress authorization; the owner then explicitly approved those commits and one
+API31 checkpoint. CI37902157751 built both ABIs and passed core/native controls,
+lint, pins/assets/alignment/signatures. API31 failed before its native/input/
+feature/job runtime suites: the bootstrap harness still searched Home for the
+native diagnostic, now in Settings. Saved Home hierarchy has both picker labels
+and Settings; no app crash/native-load error is recorded. Harness-only correction
+opens Settings and retains Home screenshot; syntax/actual saved-node coordinates
+passed locally. A build-free API31 retry awaits owner approval because only one
+checkpoint was approved. Existing source-bound APKs are under
+build/ui-ci/37902157751/apks; never rebuild solely for this harness change.
+No automatic duplicate build was started. PDF remains excluded owner input.
 
 Owner merged extraction PR1 into main at b0eca40. Baseline CI37898652707 passed
 both ABI builds, native/core/lint/packaging and all API30-36 jobs. This newer fully

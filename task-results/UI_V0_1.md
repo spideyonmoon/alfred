@@ -66,7 +66,8 @@ actions. The current PNG viewer and Compare semantics remain the accepted scope.
 - Debug input harness now covers selected subsets, independent metadata access,
   stale selection rejection and cleanup. Real SAF harness covers Metadata tab,
   select-all/subset, resize control and single-row Spectrogram admission. These
-  new runtime assertions are not yet executed. No new CI run was started.
+  new runtime assertions are not yet accepted. One API31 checkpoint was run:
+  https://github.com/spideyonmoon/alfred/actions/runs/37902157751.
 - Local ADB initially could not start inside the sandbox; normal server startup
   succeeded outside it and listed no connected devices. No local runtime/visual
   acceptance, physical phone checks or A07 closure.
@@ -79,9 +80,32 @@ for additional APIs only when justified. An old whole APK cannot validate this U
 
 ## Push / CI authorization boundary
 
-Source commit ee704d2 is on local codex/ui-v0-1 from the owner's merged main.
+Source commit ee704d2 is on codex/ui-v0-1 from the owner's merged main.
 Automatic approval review rejected pushing that branch to spideyonmoon/alfred:
 the source/docs payload's egress was not specifically authorized. Push and the
-dependent one-API31 manual workflow dispatch did not execute. Owner approval is
-required to proceed; no workaround is attempted. The PDF, APK, caches, native
-build inputs and private audio are excluded from the Git commit.
+dependent one-API31 manual workflow dispatch did not execute in that rejected
+attempt. The owner then explicitly approved pushing ee704d2 / 84e1171 and one
+API31 CI checkpoint. Push and manual dispatch succeeded: CI37902157751 is running.
+The PDF, APK, caches, native build inputs and private audio are excluded from Git.
+
+## First UI checkpoint and harness-only correction
+
+CI37902157751 at app/source revision 84e1171 built both ABIs and passed core
+CLI/no-CLI, native adapter controls, strict pins/lint/assets/alignment/signatures.
+Downloaded receipts/APK SHA-256/core revision binding passed locally:
+
+- ARM64 e7149bb118eb36609d27e6cd9a43780a2dade39c309f4ee847dea5ae656ef9ec.
+- x86_64 3d9a1c5ea87b414ad00e6f00cb704cf8db9acff44ccdb1997fe74f4cfe8675ea.
+
+API31 job failed after rendering Home, before native/input/features/jobs runtime
+suites: emulator-smoke.py searched for `Native host v1 loaded` by scrolling Home.
+The redesigned diagnostic is in Settings. Saved workspace.xml shows the correct
+Home/pickers/Settings button; logcat has no app crash or native_load_failed.
+This is a stale harness assumption, not accepted runtime validation.
+
+Harness-only correction navigates to the observed Settings button, scrolls there
+for the actual native label, and retains the actual Home screenshot. Python syntax
+and saved-hierarchy observation/button coordinates passed locally. No production
+Kotlin/native changes or additional build. New runtime assertions still await a
+build-free API31 retry of the same verified artifacts; request owner approval for
+the additional run after the originally approved one checkpoint failed.

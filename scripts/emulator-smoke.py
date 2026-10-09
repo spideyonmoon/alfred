@@ -6,6 +6,7 @@ import json
 import xml.etree.ElementTree as ET
 import importlib.util
 import os
+import re
 
 
 def adb(*args):
@@ -22,6 +23,7 @@ try:
     assert "Status: ok" in result, result
     deadline = time.monotonic() + 60
     picker_labels = set()
+    entered_settings = False
     while time.monotonic() < deadline:
         adb("shell", "uiautomator", "dump", "/sdcard/alfred-smoke.xml")
         adb("pull", "/sdcard/alfred-smoke.xml", str(output / "ui.xml"))
@@ -30,11 +32,24 @@ try:
         picker_labels.update(text for text in texts if text in {"Choose documents", "Choose folder"})
         if len(picker_labels) == 2 and not (output / "workspace.xml").exists():
             (output / "workspace.xml").write_bytes((output / "ui.xml").read_bytes())
+            adb("shell", "screencap", "-p", "/sdcard/alfred-home.png")
+            adb("pull", "/sdcard/alfred-home.png", str(output / "home-display.png"))
         assert not any("native_load_failed" in text or "unsupported_version" in text for text in texts), texts
         if any("Native host v1 loaded" in text for text in texts):
             assert len(picker_labels) == 2, picker_labels
+            (output / "settings.xml").write_bytes((output / "ui.xml").read_bytes())
             break
-        # The bootstrap label is below the fold on the runner's small default AVD.
+        # Owner UI v0.1 puts diagnostic native status in Settings. Observe the
+        # actual label there; scrolling Home cannot validate native bootstrap.
+        if len(picker_labels) == 2 and not entered_settings:
+            settings = next((node for node in tree.iter("node") if node.attrib.get("text") == "Settings"), None)
+            if settings is not None:
+                left, top, right, bottom = map(int, re.findall(r"\d+", settings.attrib["bounds"]))
+                adb("shell", "input", "tap", str((left + right) // 2), str((top + bottom) // 2))
+                entered_settings = True
+                time.sleep(2)
+                continue
+        # Settings may extend below the fold on the runner's small default AVD.
         bounds = tree.getroot().find("node").attrib["bounds"]
         width, height = map(int, bounds.split("][")[1].rstrip("]").split(","))
         adb("shell", "input", "swipe", str(width // 2), str(height * 4 // 5),
