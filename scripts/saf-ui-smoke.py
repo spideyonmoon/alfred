@@ -12,6 +12,26 @@ def adb(*args):
     return subprocess.check_output(["adb", *args], text=True, stderr=subprocess.STDOUT)
 
 
+def panel_target(current, label, actionable=False):
+    """Reject clipped text/buttons; a visible label can have an untappable edge."""
+    parents = {child: parent for parent in current for child in parent}
+    height = int(re.findall(r"\d+", current[0].attrib["bounds"])[-1])
+    for node in current:
+        if node.attrib.get("text") != label:
+            continue
+        target = node
+        if actionable:
+            while target is not None and target.attrib.get("clickable") != "true":
+                target = parents.get(target)
+            if target is None or target.attrib.get("enabled") != "true":
+                continue
+        left, top, right, bottom = map(int, re.findall(r"\d+", target.attrib["bounds"]))
+        minimum = 44 if actionable else 18
+        if right > left and bottom - top >= minimum and bottom <= height - 8:
+            return target
+    return None
+
+
 def run(output: Path):
     api = int(adb("shell", "getprop", "ro.build.version.sdk").strip())
     finger_jar = None
@@ -69,16 +89,26 @@ def run(output: Path):
     def click(label):
         tap(match(label))
 
-    def panel_match(label):
+    def panel_match(label, actionable=False):
         # Only the lower actions panel scrolls; a full-screen swipe can move
         # the track table instead. Reacquire bounds after each bounded swipe.
         for _ in range(8):
             current = nodes()
-            found = next((n for n in current if n.attrib.get("text") == label), None)
+            found = panel_target(current, label, actionable)
             if found is not None:
                 return found
             _, _, width, height = map(int, re.findall(r"\d+", current[0].attrib["bounds"]))
-            adb("shell", "input", "swipe", str(width // 2), str(height * 9 // 10), str(width // 2), str(height * 2 // 3), "250")
+            # Move less than one lower-panel viewport so a short label/control
+            # cannot jump from the bottom edge to above the panel in one swipe.
+            panels = [n for n in current if n.attrib.get("scrollable") == "true" and
+                      int(re.findall(r"\d+", n.attrib["bounds"])[1]) >= height // 2]
+            if not panels:
+                raise AssertionError("Workspace actions scroll surface missing")
+            panel = panels[0]
+            left, top, right, bottom = map(int, re.findall(r"\d+", panel.attrib["bounds"]))
+            distance = max(24, (bottom - top) // 3)
+            x, start = (left + right) // 2, bottom - 16
+            adb("shell", "input", "swipe", str(x), str(start), str(x), str(start - distance), "250")
         raise AssertionError("Workspace panel label missing: " + label)
 
     def top():
@@ -184,7 +214,12 @@ def run(output: Path):
     # generated selection; this must not submit a forensic/DSP operation.
     click("Metadata")
     match("Metadata studio")
-    tap(panel_match("Inspect metadata · same.flac"))
+    inspect = panel_match("Inspect metadata · same.flac", actionable=True)
+    (output / "metadata-before-tap.xml").write_bytes((output / "saf-current.xml").read_bytes())
+    tap(inspect)
+    time.sleep(1)
+    nodes()
+    (output / "metadata-after-tap.xml").write_bytes((output / "saf-current.xml").read_bytes())
     panel_match("All report fields")
     (output / "workspace-metadata.xml").write_bytes((output / "saf-current.xml").read_bytes())
     adb("shell", "screencap", "-p", "/sdcard/alfred-metadata.png")

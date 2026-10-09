@@ -36,6 +36,17 @@ checkpoint was approved. Existing source-bound APKs are under
 build/ui-ci/37902157751/apks; never rebuild solely for this harness change.
 No automatic duplicate build was started. PDF remains excluded owner input.
 
+Owner approved the first build-free retry; CI37903457491 passed source/APK/core
+reuse verification, actual Settings/native bootstrap, native controls and all
+input groups (including subset, independent metadata, exact export, stale rejection
+and cleanup). SAF single/multiple/folder acquisition passed. Metadata UI then
+failed finding All report fields. Small AVD panel/clipped tap or scroll overshoot
+is suspected, not proven; retained final XML has only history links at the panel
+bottom. New harness correction rejects clipped actionable targets, uses short
+panel-local swipes and records before/after-tap XML. Host visibility/clipped/full
+target checks and syntax passed. No compiled source changes. Further build-free
+API31 validation needs approval; features/viewer/jobs were not reached.
+
 Owner merged extraction PR1 into main at b0eca40. Baseline CI37898652707 passed
 both ABI builds, native/core/lint/packaging and all API30-36 jobs. This newer fully
 green run supersedes the aggregate diagnostic-red status for the baseline only;

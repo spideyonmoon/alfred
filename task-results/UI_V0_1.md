@@ -109,3 +109,25 @@ and saved-hierarchy observation/button coordinates passed locally. No production
 Kotlin/native changes or additional build. New runtime assertions still await a
 build-free API31 retry of the same verified artifacts; request owner approval for
 the additional run after the originally approved one checkpoint failed.
+
+## First build-free retry
+
+Owner approved de9a881 and CI37903457491. Compilation skipped; full source/core/APK
+reuse guard passed. Actual Settings bootstrap, native controls and all six shared
+input groups passed, including independent metadata/exact-byte export, subset
+capability, stale metadata rejection and current-cache/orphan cleanup. Real SAF
+single/multiple/folder acquisition passed. Home and music screenshots are retained
+under build/ui-ci/37903457491/api31 (generated inputs only).
+
+Metadata UI failed observing All report fields. The small 320x640 panel was
+scrolled to history in the final hierarchy. A clipped inspect-button tap or
+overshooting the label is the current inference; backend metadata is successful,
+but this does not establish UI success. Forensics/viewer/Compare/jobs runtime
+suites were not reached, and the run remains red.
+
+Further harness-only correction selects the enabled clickable ancestor only
+when it has sufficient visible height and bottom clearance, uses shorter swipes
+within the observed lower scroll surface, and saves before/after-tap hierarchy.
+Syntax, actual retained Metadata-tab visibility and host clipped/full-button
+selection checks passed. Production sources/APKs remain unchanged. Additional
+build-free API31 attempts require approval beyond the single retry already used.
