@@ -1,65 +1,65 @@
 package dev.alfred.forensics
 
-import androidx.compose.material3.Button
-import androidx.compose.material3.Text
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import dev.alfred.shared.*
 import org.json.JSONObject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.CancellationException
 
 val forensicsOperation = Operation(FeatureId.FORENSICS, "Audio Forensics", 1, 32)
 
 @Composable
 fun ForensicsScreen(inputs: FeatureInputs?, jobs: SharedJobs, records: List<JobRecord>,
-                    onExport: ResultAction, onShare: ResultAction, onRoute: (FeatureId) -> Unit) {
+                    onExport: ResultAction, onShare: ResultAction, showHistory: Boolean = true, focusedItem: String? = null) {
     val app = LocalContext.current.applicationContext
     val coroutine = rememberCoroutineScope()
     var notice by remember { mutableStateOf("") }
     var submitting by remember { mutableStateOf(false) }
-    Text("Audio Forensics", style = MaterialTheme.typography.headlineMedium)
-    Text("Read-only metadata, native measurements and the qualified Python reference method. Scores are uncalibrated; they are not probabilities or proof of authenticity, source or sound quality. Native ancestry remains INCONCLUSIVE; evidence index is unavailable.")
-    if (notice.isNotEmpty()) Text(notice)
+    val ids = inputs?.selection?.items?.map { it.id }.orEmpty()
+    var launched by rememberSaveable(inputs?.selection?.id) { mutableStateOf<String?>(null) }
+    val latest = records.filter { it.feature == "forensics" && (if (focusedItem != null) focusedItem in it.items else it.attemptId == launched || ids.isNotEmpty() && it.items == ids) }.maxByOrNull { it.createdMs }
+    if (showHistory) {
+        Text("Forensics history", style = MaterialTheme.typography.headlineMedium)
+        ResultBrowser("forensics", jobs, records, setOf("product" to "audio-forensic-product-v1", "alfred-result" to "1"),
+            onExport, onShare, showRawFields = false) { descriptor, value ->
+            if (descriptor.kind == "product" && value is Map<*, *>) ForensicReport(value, descriptor)
+            else Disclosure("Technical data") { ExactFields(value) }
+        }
+        return
+    }
+    if (notice.isNotEmpty()) Text(notice, style = MaterialTheme.typography.bodySmall)
+    records.filter { it.feature == "forensics" && !it.terminal }.forEach { job ->
+        Text(if (job.cancelRequested) "Cancellation requested" else "Analysis ${job.state.replace('_', ' ')}", style = MaterialTheme.typography.titleSmall)
+        val progress = jobs.progressSnapshot()
+        if (progress?.attemptId == job.attemptId) Text(progress.phase.replace('_', ' '), style = MaterialTheme.typography.bodySmall)
+        LinearProgressIndicator(Modifier.fillMaxWidth())
+        TextButton(enabled = !job.cancelRequested, onClick = { jobs.cancel(job.attemptId) }) { Text("Cancel analysis") }
+    }
     if (inputs != null) {
-        val prefix = inputs.selection.items.mapNotNull { inputs.probes[it.id]?.rate }.maxOrNull()?.let { minOf(180L, 8_640_000L / it) }
-        var seconds by rememberSaveable(inputs.selection.id, inputs.selection.items.map { it.id }) { mutableStateOf(prefix?.toString() ?: "") }
-        val selectedSeconds = seconds.toLongOrNull()
-        fun start(scope: JSONObject, retry: String? = null) {
+        Button(enabled = !submitting && ids.size in 1..32 && inputs.probes.values.any { it.status == "available" }, onClick = {
             submitting = true
             coroutine.launch {
-                try { val record = withContext(Dispatchers.IO) { ForensicsWork.submit(app, inputs, scope, retry).get() }; notice = "${record.state} · ${record.attemptId}" }
-                catch (error: Exception) { notice = resultFailure(error) }
+                try {
+                    val record = withContext(Dispatchers.IO) { ForensicsWork.submit(app, inputs, JSONObject().put("kind", "full")).get() }
+                    launched = record.attemptId
+                    notice = ""
+                } catch (cancelled: CancellationException) { throw cancelled }
+                catch (failure: Exception) { notice = "Analysis could not start · ${resultFailure(failure)}" }
                 finally { submitting = false }
             }
-        }
-        Text("${inputs.selection.items.size} tracks · each result retains its own status, scope, channels, units and caveats.")
-        Button(enabled = !submitting, onClick = { start(JSONObject().put("kind", "full")) }) { Text("Analyze full scope") }
-        if (prefix != null && prefix > 0) {
-            OutlinedTextField(seconds, onValueChange = { seconds = it }, label = { Text("Partial analysis seconds (1–$prefix)") }, singleLine = true)
-            Button(enabled = !submitting && selectedSeconds != null && selectedSeconds in 1..prefix,
-                onClick = { start(JSONObject().put("kind", "prefix").put("seconds", selectedSeconds)) }) { Text("Analyze selected prefix") }
-        }
-        Text("Full-scope resource admission may reject high-rate input. Choose a prefix explicitly; its result does not describe the entire track.")
-        records.lastOrNull { it.feature == "forensics" && it.terminal && it.items == inputs.selection.items.map { item -> item.id } }?.let { previous ->
-            Button(enabled = !submitting, onClick = { start(JSONObject(previous.options).getJSONObject("scope"), previous.jobId) }) { Text("Retry with fresh input") }
-        }
-        Button(onClick = { onRoute(FeatureId.SPECTROGRAM) }) { Text("Spectrogram · planned") }
-        Button(onClick = { onRoute(FeatureId.COMPARE) }) { Text("Compare · planned") }
-    } else Text("Select documents in the workspace to start a new analysis. Saved results remain available.")
-    ResultBrowser("forensics", jobs, records, setOf("product" to "audio-forensic-product-v1", "alfred-result" to "1"), onExport, onShare) { descriptor, value ->
-        if (descriptor.kind == "product" && value is Map<*, *>) {
-            val doc = runCatching { ForensicDocument.from(value) }.getOrNull()
-            if (doc == null) Text("invalid_payload · inspect raw fields or export original bytes")
-            else {
-                Text("${doc.status} · ${doc.source} · ${doc.measurementStatus} · reference ${doc.assessmentStatus}")
-                Text(doc.summary)
-            }
-            Text("Expand metadata for all raw tags/declarations; measurement_report for native channels, scopes and detector caveats; reference_assessment for scores, missing inputs, candidates, rule traces and deviations. Every saved field is accessible below.")
+        }) { Text(if (latest?.terminal == true) "Scan again · ${ids.size} selected" else "Scan · ${ids.size} selected") }
+    } else if (latest == null) Text("Select tracks to analyze.", style = MaterialTheme.typography.bodyMedium)
+    latest?.let { result ->
+        if (result.terminal) {
+            if (result.state != "completed") Text("Analysis ${result.state} · ${result.error ?: "No completed finding"}", style = MaterialTheme.typography.bodyMedium)
+            InlineReport(result.attemptId, jobs, onExport, onShare, focusedItem)
         }
     }
 }

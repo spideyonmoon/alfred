@@ -1,12 +1,14 @@
 package dev.alfred.shared
 
-import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.material3.*
 import androidx.compose.foundation.text.selection.SelectionContainer
-import androidx.compose.material3.Button
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import kotlinx.coroutines.Dispatchers
@@ -26,7 +28,7 @@ fun ExactFields(value: Any?) {
         is List<*> -> node[part.toInt()]
         else -> null
     }
-    Text(if (path.isEmpty()) "All report fields" else path.joinToString(" / "))
+    Text(if (path.isEmpty()) "All report fields" else path.joinToString(" / "), style = MaterialTheme.typography.titleSmall)
     if (path.isNotEmpty()) TextButton(onClick = { path = path.dropLast(1) }) { Text("Up one field") }
     val entries = when (val node = current) {
         is Map<*, *> -> node.entries.asSequence().drop(page * 24).take(24).map { it.key.toString() to it.value }.toList()
@@ -39,7 +41,7 @@ fun ExactFields(value: Any?) {
         entries.forEach { (key, child) ->
             TextButton(onClick = { path = path + key }) {
                 val preview = when (child) { null -> "null · unavailable"; is Map<*, *> -> "${child.size} fields"; is List<*> -> "${child.size} entries"; else -> child.toString().take(100) }
-                Text("$key: $preview")
+                Text("$key: $preview", modifier = Modifier.fillMaxWidth(), style = MaterialTheme.typography.bodySmall)
             }
         }
         if ((page + 1) * 24 < size) Button(onClick = { page++ }) { Text("Next fields") }
@@ -55,12 +57,16 @@ fun ExactFields(value: Any?) {
 fun ResultBrowser(feature: String, jobs: SharedJobs, records: List<JobRecord>, supported: Set<Pair<String, String>>,
                   onExport: ResultAction, onShare: ResultAction,
                   artifactPreview: @Composable (String, ResultDescriptor) -> Unit = { _, _ -> },
+                  showRawFields: Boolean = true,
                   summary: @Composable (ResultDescriptor, Any?) -> Unit = { _, _ -> }) {
     var entries by remember { mutableStateOf<List<org.json.JSONObject>>(emptyList()) }
     var selected by rememberSaveable(feature) { mutableStateOf<String?>(null) }
     var descriptorIndex by rememberSaveable(selected) { mutableStateOf(0) }
     var revision by remember { mutableStateOf(0) }
     var notice by remember { mutableStateOf("") }
+    var details by remember { mutableStateOf("") }
+    var historyLoading by remember { mutableStateOf(true) }
+    var confirmDelete by remember { mutableStateOf(false) }
     var descriptors by remember { mutableStateOf<List<ResultDescriptor>>(emptyList()) }
     var document by remember { mutableStateOf<Any?>(null) }
     var loadState by remember { mutableStateOf("loading") }
@@ -71,17 +77,31 @@ fun ResultBrowser(feature: String, jobs: SharedJobs, records: List<JobRecord>, s
                 jobs.awaitReady(); jobs.results.entries().filter { it.getString("feature_id") == feature }.reversed()
             }
         } catch (error: Exception) { notice = resultFailure(error) }
+        finally { historyLoading = false }
     }
     HorizontalDivider()
-    Text("Saved $feature results", style = MaterialTheme.typography.titleLarge)
-    if (notice.isNotEmpty()) Text(notice)
-    records.filter { it.feature == feature && it.terminal }.reversed().forEach { Text("${it.state} · ${it.error ?: ""} · attempt ${it.attemptId}") }
-    entries.forEach { entry ->
+    if (notice.isNotEmpty()) Text(notice, style = MaterialTheme.typography.bodySmall)
+    if (historyLoading) LinearProgressIndicator(Modifier.fillMaxWidth())
+    if (!historyLoading && entries.isEmpty()) DetailCard("No saved reports yet") {
+        Text("Completed analyses will appear here. Select music in the workspace to begin.", style = MaterialTheme.typography.bodyMedium)
+    }
+    val unsuccessful = records.filter { it.feature == feature && it.terminal && it.state != "completed" }.reversed()
+    if (unsuccessful.isNotEmpty()) Disclosure("Unsuccessful attempts (${unsuccessful.size})") {
+        unsuccessful.forEach { Text("${it.state} · ${it.error ?: "No further diagnostic"} · attempt ${it.attemptId}", style = MaterialTheme.typography.bodySmall) }
+    }
+    if (selected == null) entries.forEach { entry ->
         val attempt = entry.getString("attempt_id")
-        TextButton(onClick = { selected = attempt }) { Text("Open ${entry.getString("state")} · $attempt") }
+        val created = java.text.DateFormat.getDateTimeInstance(java.text.DateFormat.MEDIUM, java.text.DateFormat.SHORT)
+            .format(java.util.Date(entry.optLong("created_ms")))
+        DetailCard(entry.getString("state").replace('_', ' ').replaceFirstChar { it.uppercase() }) {
+            Text(created, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            TextButton(onClick = { selected = attempt }, modifier = Modifier.semantics {
+                contentDescription = "Open ${entry.getString("state")} · $attempt"
+            }) { Text("View report →") }
+        }
     }
     LaunchedEffect(selected, descriptorIndex, revision) {
-        document = null; descriptors = emptyList(); loadState = "loading"
+        document = null; descriptors = emptyList(); details = ""; loadState = "loading"
         val attempt = selected ?: return@LaunchedEffect
         try {
             val loaded = withContext(Dispatchers.IO) {
@@ -103,28 +123,45 @@ fun ResultBrowser(feature: String, jobs: SharedJobs, records: List<JobRecord>, s
                 }
             }
             descriptors = loaded.first.first; loadState = loaded.first.second; document = loaded.first.third
-            notice = "Track outcomes: ${loaded.second}"
+            details = "Track outcomes: ${loaded.second}"
         } catch (error: Exception) { loadState = resultFailure(error) }
     }
     selected?.let { attempt ->
-        Text("Attempt $attempt · $loadState")
-        descriptors.forEachIndexed { index, descriptor ->
-            TextButton(onClick = { descriptorIndex = index }) { Text("${index + 1}: ${descriptor.kind} · ${descriptor.version} · ${descriptor.bytes} bytes") }
+        TextButton(onClick = { selected = null }) { Text("‹ All saved reports") }
+        if (loadState == "loading") LinearProgressIndicator(Modifier.fillMaxWidth())
+        else if (loadState != "available") Text(loadState, color = MaterialTheme.colorScheme.error)
+        Disclosure("Report details") {
+            Text("Attempt $attempt", style = MaterialTheme.typography.bodySmall)
+            Text(details, style = MaterialTheme.typography.bodySmall)
+        }
+        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            descriptors.forEachIndexed { index, descriptor ->
+                FilterChip(selected = descriptorIndex == index, onClick = { descriptorIndex = index },
+                    label = { Text("${index + 1}: ${descriptor.kind}") })
+            }
         }
         descriptors.getOrNull(descriptorIndex)?.let { descriptor ->
-            Button(onClick = { onExport(attempt, descriptor) }) { Text("Export original ${descriptor.kind}") }
-            Button(onClick = { onShare(attempt, descriptor) }) { Text("Share ${descriptor.kind}") }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(onClick = { onExport(attempt, descriptor) }, modifier = Modifier.weight(1f)) { Text("Export original") }
+                OutlinedButton(onClick = { onShare(attempt, descriptor) }, modifier = Modifier.weight(1f)) { Text("Share") }
+            }
+            Text("${descriptor.version} · ${descriptor.bytes} bytes", style = MaterialTheme.typography.bodySmall)
             if (loadState == "available" && descriptor.artifact) artifactPreview(attempt, descriptor)
             if (loadState == "available" && document != null) {
                 summary(descriptor, document)
-                key(attempt, descriptor.path) { Column { ExactFields(document) } }
+                if (showRawFields) key(attempt, descriptor.path) { Disclosure("Inspect all report fields") { ExactFields(document) } }
             } else if (loadState == "unsupported_version") Text("unsupported_version · original bytes remain exportable")
         }
-        Button(onClick = {
+        TextButton(onClick = { confirmDelete = true }, colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Text("Delete local result") }
+        if (confirmDelete) AlertDialog(onDismissRequest = { confirmDelete = false },
+            title = { Text("Delete this report?") }, text = { Text("This removes the saved result from Alfred. Your source audio is unchanged.") },
+            dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text("Keep report") } },
+            confirmButton = { TextButton(onClick = {
+            confirmDelete = false
             scope.launch {
                 try { withContext(Dispatchers.IO) { jobs.results.delete(attempt) }; selected = null; revision++; notice = "Deleted local result" }
                 catch (error: Exception) { notice = resultFailure(error) }
             }
-        }) { Text("Delete local result") }
+        }) { Text("Delete report") } })
     }
 }

@@ -171,10 +171,10 @@ def run(output: Path):
         while time.monotonic() < deadline:
             current = nodes()
             texts = [n.attrib.get("text", "") for n in current]
-            selected = selected or any(f"of {count} selected documents" in text for text in texts)
-            if selected and any("Input checks complete" in text for text in texts):
-                complete = True
-            if complete and any("persisted" in text for text in texts):
+            selected = selected or any(text == f"{count} selected" for text in texts)
+            # Scan is available only after native input checks finish. Persisted
+            # grant flags are tested by InputSmokeActivity, not debug text in a row.
+            if selected and visible_node(current, f"Scan · {count} selected", actionable=True):
                 return
             if selected:
                 # Notifications/other status text can push the document row off
@@ -187,12 +187,14 @@ def run(output: Path):
 
     adb("shell", "am", "force-stop", "dev.alfred.workspace.debug")
     adb("shell", "am", "start", "-W", "-n", "dev.alfred.workspace.debug/dev.alfred.workspace.MainActivity")
+    click("Select file / folder")
     click("Choose one document")
     root()
     click("same.flac")
     checked(1)
     (output / "saf-single.xml").write_bytes((output / "saf-current.xml").read_bytes())
-    click("Home")
+    click("Back to Home")
+    click("Select file / folder")
     click("Choose documents")
     root()
     tap(match("same.flac"), long=True)
@@ -201,7 +203,8 @@ def run(output: Path):
     click("Select")
     checked(2)
     (output / "saf-multiple.xml").write_bytes((output / "saf-current.xml").read_bytes())
-    click("Home")
+    click("Back to Home")
+    click("Select file / folder")
     click("Choose folder")
     root()
     click("Use this folder")
@@ -210,46 +213,30 @@ def run(output: Path):
     (output / "saf-folder.xml").write_bytes((output / "saf-current.xml").read_bytes())
     adb("shell", "screencap", "-p", "/sdcard/alfred-workspace.png")
     adb("pull", "/sdcard/alfred-workspace.png", str(output / "workspace-display.png"))
-    # The owner currently exposes Audio Forensics only. Other routes are shells;
-    # verify their status rather than requiring unfinished workflows to execute.
-    click("Metadata")
-    match("Metadata studio")
-    panel_match("Planned feature")
-    assert not any(n.attrib.get("text", "").startswith("Inspect metadata") for n in nodes()), "Metadata shell exposed an inspector"
-    (output / "workspace-metadata.xml").write_bytes((output / "saf-current.xml").read_bytes())
-    adb("shell", "screencap", "-p", "/sdcard/alfred-metadata.png")
-    adb("pull", "/sdcard/alfred-metadata.png", str(output / "metadata-display.png"))
-    click("Forensic")
+    # Future categories have no fabricated actions; Forensic tools stay in this sheet.
     current = nodes()
-    assert any(n.attrib.get("content-desc") == "Track table height" for n in current), "Resizable table control missing"
-    # Audio Forensics acts on the chosen subset of a multi-file workspace.
+    assert any(n.attrib.get("content-desc") == "Bottom sheet height" for n in current), "Sheet handle missing"
+    assert not any(n.attrib.get("text", "").startswith("Inspect metadata") for n in current), "Metadata inspector exposed"
     tap(match("Select all tracks"))
-    match("0 of 3 selected documents")
+    match("0 selected")
     tap(match("Select same.flac"))
-    match("1 of 3 selected documents")
-    # The capability notice is rendered below the action button; verify the
-    # actual button's enabled ancestor rather than accepting its text alone.
-    def enabled_action(label):
-        for node in nodes():
-            if node.attrib.get("clickable") == "true" and node.attrib.get("enabled") == "true" and any(
-                child.attrib.get("text") == label for child in node.iter("node")
-            ):
-                return True
-        return False
-    panel_match("Audio Forensics")
-    assert enabled_action("Audio Forensics"), "Single-row Audio Forensics action unavailable"
-    for label, title in (("Spectrogram · planned", "Spectrogram"), ("Compare · planned", "Compare")):
+    match("1 selected")
+    panel_match("Scan · 1 selected", actionable=True)
+    assert any(n.attrib.get("content-desc") == "Select all tracks" for n in nodes()), "Analysis left the table"
+    assert not any(n.attrib.get("text") == "Partial analysis" for n in nodes()), "Removed scope selector returned"
+    for label, empty in (("Spectrogram", "No preview loaded"), ("Compare", "No comparison loaded")):
         tap(panel_match(label, actionable=True))
-        match(title)
-        match("Planned feature")
-        assert not any(n.attrib.get("text", "").startswith(("Analyze", "Render", "Compare saved", "Open completed")) for n in nodes()), "Planned route exposed execution/history"
-        adb("shell", "input", "keyevent", "4")
-        match("Music")
+        panel_match(empty)
+        assert not any(n.attrib.get("text", "").startswith(("Scan ·", "Render", "Compare saved")) for n in nodes()), "Future tool exposed execution"
+    tap(panel_match("Audio Forensics", actionable=True))
+    panel_match("Scan · 1 selected", actionable=True)
     import json
     (output / "workspace-ui-smoke.json").write_text(json.dumps({"passed": True, "api": api,
-        "metadata_shell": True, "select_all_and_subset": True, "single_row_forensics": True,
-        "spectrogram_and_compare_shells": True,
-        "resize_control_visible": True}))
+        "future_categories_no_execution": True, "select_all_and_subset": True,
+        "single_row_forensics": True, "direct_tool_switching": True,
+        "sheet_handle_visible": True, "analysis_preserves_table": True,
+        "removed_scope_selector": True}))
+
 
 
 if __name__ == "__main__":

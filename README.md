@@ -1,5 +1,11 @@
 # Alfred
 
+**Status: Android development shelved as of 2026-10-10.** Current work is retained
+for a possible return. A Windows app may be considered later; the owner's current
+focus is planning the independent core engine. Android acceptance and release work
+remain deferred, not complete. See [the shelving checkpoint](HANDOFF.md) before
+acting on historical implementation plans or build instructions below.
+
 Offline Android audio workspace. Audio Forensics is the available feature;
 Spectrogram, Compare and Metadata studio currently have planned-feature shells.
 The Android app, shared infrastructure and JNI adapter live here. The independent
@@ -15,13 +21,15 @@ Start with [HANDOFF.md](HANDOFF.md), [BUILDING.md](BUILDING.md) and
 `python scripts/prepare_core.py` provisions an ignored, revision-bound fixture checkout.
 The adapter resolves the same revision through Cargo's Git dependency/cache.
 
-The owner-supplied UI v0.1 scratchpad is being integrated into Home/Settings, a
-selectable music table and separate Forensic/Metadata action tabs. See
-[the implementation record](task-results/UI_V0_1.md) for scope and validation.
-The owner clarified that the remaining features should stay as shells. Existing
-backend contracts and development checks are retained, without presenting them as
-completed features. The current shell revision has local build/lint/packaging
-checks; its runtime and owner visual acceptance remain pending.
+The owner's UI sketch now guides a minimal import home and a spreadsheet music
+workspace above a resizable Forensic/Metadata panel. Audio Forensics setup stays
+inside that workspace; history exposes summaries and expandable original fields.
+The prior presentation was rejected and has been reworked, including themes,
+settings and launcher branding. See [the redesign record](task-results/UI_REDESIGN.md)
+for changes and precise validation limits. Other tools remain planned shells.
+The approved forensic report is implemented in native Compose; see
+[implementation and validation](task-results/UI_REPORT_ANDROID.md).
+Runtime and owner visual acceptance of the Android presentation are still pending.
 A07 physical-device/resources and A08 release/signing remain unaccepted.
 
 ## Provenance and licensing

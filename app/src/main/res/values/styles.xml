@@ -1,0 +1,10 @@
+<resources>
+    <color name="launcher_background">#245C4D</color>
+    <style name="AlfredTheme" parent="android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">#F5F5EF</item>
+        <item name="android:colorAccent">#245C4D</item>
+        <item name="android:statusBarColor">#F5F5EF</item>
+        <item name="android:navigationBarColor">#F5F5EF</item>
+        <item name="android:windowLightStatusBar">true</item>
+    </style>
+</resources>

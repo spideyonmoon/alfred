@@ -1,5 +1,8 @@
 # Owner scratchpad implementation - 2026-10-09
 
+Historical implementation record. The owner rejected this presentation; see
+[the subsequent redesign](UI_REDESIGN.md) for the current working tree and APK.
+
 Source: local `owner-input/UI_v0_1.pdf`, supplied by the owner. The PDF remains
 owner input; its diagram is a flow/layout reference, not final visual acceptance.
 The owner clarified that Compare retains 2-32 variants, then narrowed the current

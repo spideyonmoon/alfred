@@ -41,7 +41,7 @@ def run(output, receipt):
             parents = {child: parent for parent in current for child in parent}
             height = int(re.findall(r"\d+", current[0].attrib["bounds"])[-1])
             for node in current:
-                if text not in node.attrib.get("text", ""):
+                if text not in node.attrib.get("text", "") and text not in node.attrib.get("content-desc", ""):
                     continue
                 target = node
                 if actionable:
@@ -64,23 +64,31 @@ def run(output, receipt):
         time.sleep(.5)
 
     click("Forensics history")
-    find("Scores are uncalibrated")
+    click("Open completed · " + receipt["actual_attempt"])
+    find("Native ancestry:")
+    for section, evidence in (
+        ("Spectral investigation", "Native 95th-percentile cutoff"),
+        ("Dynamics laboratory", "Programme loudness"),
+        ("Codec fingerprints", "Sample-rate conversion"),
+        ("Bit-depth investigation", "Bits exercised"),
+        ("Evidence explorer", "How the stored score was reached"),
+    ):
+        click(section)
+        find(evidence)
+        click(section, up=False)
+    click("All saved reports", up=False)
     click("Open completed · " + receipt["generated_attempt"])
-    find("Generated abstention")
+    find("Analysis failed")
+    click("Technical data & original report")
+    click("Inspect exact original fields")
     click("unknown_future_integer:")
     find("18446744073709551615")
     # Navigation back up to the object precedes choosing a sibling field.
     click("Up one field", up=False)
     click("unknown_null:")
     find("null · unavailable (not zero)")
-    (output / "feature-ui-smoke.json").write_text(json.dumps({"passed": True, "checks": 5,
-        "history_after_restart": True, "api": int(adb("shell", "getprop", "ro.build.version.sdk"))}))
-    adb("shell", "input", "keyevent", "4")
-    for label, title in (("Spectrogram · planned", "Spectrogram"), ("Compare · planned", "Compare")):
-        click(label)
-        find(title, scroll=False)
-        find("Planned feature", scroll=False)
-        assert not any(n.attrib.get("text", "").startswith(("Analyze", "Render", "Compare saved", "Open completed")) for n in nodes()), "Shell exposed execution/history"
-        adb("shell", "input", "keyevent", "4")
-    (output / "feature-shell-ui.json").write_text(json.dumps({"passed": True,
-        "spectrogram_shell": True, "compare_shell": True, "after_restart": True}))
+    (output / "feature-ui-smoke.json").write_text(json.dumps({"passed": True, "checks": 10,
+        "all_five_investigations": True, "history_after_restart": True,
+        "api": int(adb("shell", "getprop", "ro.build.version.sdk"))}))
+    # Planned tools are exercised by saf-ui-smoke.py in the workspace panel.
+    # History is intentionally a report-only destination.

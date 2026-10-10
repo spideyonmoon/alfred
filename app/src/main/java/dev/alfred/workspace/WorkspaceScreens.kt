@@ -1,6 +1,6 @@
 package dev.alfred.workspace
 
-import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.draggable
@@ -9,52 +9,94 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.*
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import dev.alfred.shared.*
 
 @Composable
 fun AlfredTheme(appearance: String, content: @Composable () -> Unit) {
     val dark = appearance == "dark" || (appearance == "system" && isSystemInDarkTheme())
-    val colors = if (dark) darkColorScheme(primary = Color(0xFFADC9FF), secondary = Color(0xFFB7C9DC),
-        background = Color(0xFF111820), surface = Color(0xFF18212C))
-    else lightColorScheme(primary = Color(0xFF285897), secondary = Color(0xFF516578),
-        background = Color(0xFFF5F7FA), surface = Color(0xFFFCFDFE), surfaceVariant = Color(0xFFE5EBF2))
-    MaterialTheme(colorScheme = colors, content = content)
+    val colors = if (dark) darkColorScheme(
+        primary = Color(0xFF9CD9C9), onPrimary = Color(0xFF103B32),
+        primaryContainer = Color(0xFF22483F), onPrimaryContainer = Color(0xFFC4EDE1),
+        secondary = Color(0xFFB9C7C0), background = Color(0xFF141917),
+        surface = Color(0xFF1B211E), onSurface = Color(0xFFE4E9E3),
+        onBackground = Color(0xFFE4E9E3), surfaceVariant = Color(0xFF29332D),
+        onSurfaceVariant = Color(0xFFAAB9AF), outline = Color(0xFF78867D),
+        outlineVariant = Color(0xFF38443C), surfaceContainerLowest = Color(0xFF101512),
+        surfaceContainerLow = Color(0xFF1B211E), surfaceContainer = Color(0xFF222B25),
+        surfaceContainerHigh = Color(0xFF29332D), surfaceContainerHighest = Color(0xFF313E35))
+    else lightColorScheme(
+        primary = Color(0xFF245C4D), onPrimary = Color.White,
+        primaryContainer = Color(0xFFDCECE4), onPrimaryContainer = Color(0xFF153C30),
+        secondary = Color(0xFF53685D), background = Color(0xFFF5F5EF),
+        surface = Color(0xFFFFFEF9), onSurface = Color(0xFF202B25),
+        onBackground = Color(0xFF202B25), surfaceVariant = Color(0xFFEAEDE5),
+        onSurfaceVariant = Color(0xFF56645B), outline = Color(0xFF79867C),
+        outlineVariant = Color(0xFFD5DBD1), surfaceContainerLowest = Color(0xFFFFFEF9),
+        surfaceContainerLow = Color(0xFFF5F5EF), surfaceContainer = Color(0xFFF0F1EA),
+        surfaceContainerHigh = Color(0xFFEAEDE5), surfaceContainerHighest = Color(0xFFE3E8DF))
+    MaterialTheme(colorScheme = colors,
+        shapes = Shapes(small = RoundedCornerShape(8.dp), medium = RoundedCornerShape(14.dp), large = RoundedCornerShape(20.dp)),
+        typography = Typography(
+            headlineLarge = androidx.compose.ui.text.TextStyle(fontSize = 32.sp, lineHeight = 38.sp, fontWeight = FontWeight.Medium, letterSpacing = (-1).sp),
+            headlineMedium = androidx.compose.ui.text.TextStyle(fontSize = 26.sp, lineHeight = 32.sp, fontWeight = FontWeight.Medium, letterSpacing = (-0.5).sp),
+            titleLarge = androidx.compose.ui.text.TextStyle(fontSize = 20.sp, lineHeight = 26.sp, fontWeight = FontWeight.Medium),
+            bodyLarge = androidx.compose.ui.text.TextStyle(fontSize = 16.sp, lineHeight = 24.sp),
+            bodyMedium = androidx.compose.ui.text.TextStyle(fontSize = 14.sp, lineHeight = 21.sp),
+            bodySmall = androidx.compose.ui.text.TextStyle(fontSize = 12.sp, lineHeight = 18.sp)
+        ), content = content)
 }
 
 @Composable
 fun HomeScreen(onSingle: () -> Unit, onMultiple: () -> Unit, onFolder: () -> Unit,
                onWorkspace: (() -> Unit)?, onHistory: (FeatureId) -> Unit) {
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp),
-        verticalArrangement = Arrangement.spacedBy(18.dp)) {
-        Spacer(Modifier.height(24.dp))
-        Text("Your audio workspace", style = MaterialTheme.typography.headlineLarge)
-        Text("Select your music and run offline Audio Forensics.", style = MaterialTheme.typography.bodyLarge)
-        Card(Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("Select file / folder", style = MaterialTheme.typography.titleLarge)
-                Text("FLAC, WAV and ALAC/M4A · up to 32 tracks")
-                Button(onClick = onSingle, modifier = Modifier.fillMaxWidth()) { Text("Choose one document") }
-                OutlinedButton(onClick = onMultiple, modifier = Modifier.fillMaxWidth()) { Text("Choose documents") }
-                OutlinedButton(onClick = onFolder, modifier = Modifier.fillMaxWidth()) { Text("Choose folder") }
-                if (onWorkspace != null) TextButton(onClick = onWorkspace) { Text("Return to music workspace") }
+    var picker by rememberSaveable { mutableStateOf(false) }
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).heightIn(min = maxHeight).padding(28.dp),
+            horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+            val ink = MaterialTheme.colorScheme.primary
+            Canvas(Modifier.size(84.dp).padding(12.dp)) {
+                listOf(.18f, .38f, .65f, 1f, .72f, .42f, .22f).forEachIndexed { index, amplitude ->
+                    val x = size.width * (index + 1) / 8
+                    drawLine(ink, Offset(x, size.height * (1 - amplitude) / 2),
+                        Offset(x, size.height * (1 + amplitude) / 2), 5.dp.toPx(), StrokeCap.Round)
+                }
             }
+            Spacer(Modifier.height(26.dp))
+            Text("Your music. In detail.", style = MaterialTheme.typography.headlineMedium)
+            Spacer(Modifier.height(10.dp))
+            Text("An offline audio workspace", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(Modifier.height(32.dp))
+            Button(onClick = { picker = true }, modifier = Modifier.widthIn(min = 220.dp).heightIn(min = 52.dp)) { Text("Select file / folder") }
+            if (onWorkspace != null) TextButton(onClick = onWorkspace) { Text("Return to music workspace") }
+            TextButton(onClick = { onHistory(FeatureId.FORENSICS) }) { Text("Forensics history") }
+            Spacer(Modifier.height(32.dp))
+            Text("FLAC  /  WAV  /  ALAC", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("Audio stays on this device", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        Text("Saved results", style = MaterialTheme.typography.titleLarge)
-        OutlinedButton(onClick = { onHistory(FeatureId.FORENSICS) }, modifier = Modifier.fillMaxWidth()) { Text("Forensics history") }
-        Text("Spectrogram, Compare and Metadata studio are planned features.", style = MaterialTheme.typography.bodySmall)
-        Text("Audio stays on this device. Folder selection reads the first level only.", style = MaterialTheme.typography.bodySmall)
     }
+    if (picker) AlertDialog(onDismissRequest = { picker = false }, title = { Text("Add your music") },
+        text = { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Choose up to 32 tracks. Folders include files at the first level only.")
+            Button(onClick = { picker = false; onSingle() }, modifier = Modifier.fillMaxWidth()) { Text("Choose one document") }
+            OutlinedButton(onClick = { picker = false; onMultiple() }, modifier = Modifier.fillMaxWidth()) { Text("Choose documents") }
+            OutlinedButton(onClick = { picker = false; onFolder() }, modifier = Modifier.fillMaxWidth()) { Text("Choose folder") }
+        } }, confirmButton = { TextButton(onClick = { picker = false }) { Text("Cancel") } })
 }
 
 fun featureTitle(feature: FeatureId): String = when (feature) {
@@ -67,142 +109,39 @@ fun featureTitle(feature: FeatureId): String = when (feature) {
 fun SettingsScreen(appearance: String, onAppearance: (String) -> Unit, preset: String,
                    nativeStatus: String, notificationsAllowed: Boolean, onNotifications: () -> Unit) {
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        Text("Settings", style = MaterialTheme.typography.headlineMedium)
-        Text("Appearance", style = MaterialTheme.typography.titleMedium)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf("system", "light", "dark").forEach { value ->
-                FilterChip(appearance == value, onClick = { onAppearance(value) }, label = { Text(value.replaceFirstChar { it.uppercase() }) })
+        verticalArrangement = Arrangement.spacedBy(20.dp)) {
+        Text("Make it yours", style = MaterialTheme.typography.headlineMedium)
+        DetailCard("Appearance") {
+            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf("system", "light", "dark").forEach { value ->
+                    FilterChip(appearance == value, onClick = { onAppearance(value) }, label = { Text(value.replaceFirstChar { it.uppercase() }) })
+                }
             }
         }
-        Text("Spectrogram resolution · planned", style = MaterialTheme.typography.titleMedium)
-        listOf("standard" to "1600 × 900", "publication" to "2560 × 1440", "large" to "3840 × 2160").forEach { (value, size) ->
-            FilterChip(preset == value, onClick = {}, enabled = false, label = { Text("$size · $value") })
+        DetailCard("Job notifications") {
+            Text(if (notificationsAllowed) "Notifications are on" else "Notifications are off")
+            Text("Follow an analysis while Alfred is in the background.", style = MaterialTheme.typography.bodySmall)
+            if (!notificationsAllowed) {
+                Text("Return to Alfred to inspect progress or cancel.", style = MaterialTheme.typography.bodySmall)
+                OutlinedButton(onClick = onNotifications) { Text("Allow job notifications") }
+            }
         }
-        Text("Resolution presets will be available when Spectrogram is ready.")
-        HorizontalDivider()
-        Text("Job notifications", style = MaterialTheme.typography.titleMedium)
-        Text(if (notificationsAllowed) "Allowed" else "Denied · operations can continue; return to Alfred to cancel or inspect progress.")
-        if (!notificationsAllowed) OutlinedButton(onClick = onNotifications) { Text("Allow job notifications") }
-        Text("Offline storage", style = MaterialTheme.typography.titleMedium)
-        Text("Imports: up to 700 MiB per track. One operation runs at a time, with two queued. Saved results: up to 32 jobs / 512 MiB. Export and share are explicit actions from each result.")
-        Text(nativeStatus, style = MaterialTheme.typography.bodySmall)
+        DetailCard("Spectrogram resolution") {
+            Text("Planned feature", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("${when (preset) { "standard" -> "1600 × 900"; "large" -> "3840 × 2160"; else -> "2560 × 1440" }} · saved default", style = MaterialTheme.typography.bodySmall)
+        }
+        Disclosure("Storage & processing limits") {
+            Text("Up to 700 MiB per track. One operation runs at a time, with two queued. Saved results: up to 32 jobs / 512 MiB. Export and share from a saved result.")
+        }
+        Text(nativeStatus, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
-}
-
-@Composable
-fun MusicWorkspace(state: WorkspaceState, selected: Set<String>, onSelected: (Set<String>) -> Unit,
-                   inputs: WorkspaceInput, forensicOperation: Operation, onFeature: (FeatureId) -> Unit,
-                   onPick: () -> Unit, onFolder: () -> Unit) {
-    var tab by rememberSaveable { mutableStateOf(0) }
-    var tableFraction by rememberSaveable { mutableFloatStateOf(0.44f) }
-    val panelScroll = rememberScrollState()
-    LaunchedEffect(tab) { panelScroll.scrollTo(0) }
-    val items = state.selection?.items.orEmpty()
-    val chosen = state.withSelectedItems(selected)
-    Column(Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-            Text("Music", style = MaterialTheme.typography.headlineSmall)
-            Row {
-                TextButton(onClick = onPick) { Text("Files") }
-                TextButton(onClick = onFolder) { Text("Folder") }
-                TextButton(onClick = {}, enabled = false) { Text("Resolution") }
-            }
-        }
-        Text("${selected.size} of ${items.size} selected documents", style = MaterialTheme.typography.labelLarge)
-        if (state.notice.isNotEmpty()) Text(state.notice, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(vertical = 6.dp))
-        if (state.busy) TextButton(onClick = { inputs.cancel() }) { Text("Cancel input checks") }
-        BoxWithConstraints(Modifier.weight(1f)) {
-            val totalPx = with(LocalDensity.current) { maxHeight.toPx() }.coerceAtLeast(1f)
-            Column(Modifier.fillMaxSize()) {
-                Surface(Modifier.fillMaxWidth().weight(tableFraction), shape = MaterialTheme.shapes.medium,
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
-                    TrackTable(state, selected, onSelected)
-                }
-                Column(Modifier.fillMaxWidth().draggable(rememberDraggableState { delta ->
-                    tableFraction = (tableFraction + delta / totalPx).coerceIn(0.2f, 0.7f)
-                }, Orientation.Vertical).padding(vertical = 4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("Resize track table", style = MaterialTheme.typography.labelSmall)
-                    Slider(tableFraction, onValueChange = { tableFraction = it }, valueRange = 0.2f..0.7f,
-                        modifier = Modifier.height(24.dp).semantics { contentDescription = "Track table height" })
-                }
-                Column(Modifier.weight(1f - tableFraction)) {
-                    TabRow(tab) {
-                        Tab(tab == 0, onClick = { tab = 0 }, text = { Text("Forensic") })
-                        Tab(tab == 1, onClick = { tab = 1 }, text = { Text("Metadata") })
-                    }
-                    Column(Modifier.fillMaxSize().verticalScroll(panelScroll).padding(vertical = 12.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        if (state.selection?.incomplete == true) {
-                            Text("This folder list is incomplete. Confirm a smaller set before checks or analysis.")
-                            Button(enabled = selected.size in 1..31, onClick = { inputs.confirmFolder(selected) }) { Text("Use selected documents") }
-                        } else if (tab == 0) {
-                            Text("Actions panel", style = MaterialTheme.typography.titleMedium)
-                            val capability = operationCapability(forensicOperation, chosen)
-                            Button(enabled = capability.state == "available" && !state.busy,
-                                onClick = { onFeature(FeatureId.FORENSICS) }, modifier = Modifier.fillMaxWidth()) { Text(forensicOperation.title) }
-                            Text(capability.reason, style = MaterialTheme.typography.bodySmall)
-                            Text("Choose full or partial analysis in Audio Forensics. Reference scores are uncalibrated; they do not measure sound quality.", style = MaterialTheme.typography.bodySmall)
-                            Text("Planned tools", style = MaterialTheme.typography.titleSmall)
-                            listOf(FeatureId.SPECTROGRAM, FeatureId.COMPARE).forEach { feature ->
-                                OutlinedButton(onClick = { onFeature(feature) }, modifier = Modifier.fillMaxWidth()) { Text("${featureTitle(feature)} · planned") }
-                            }
-                        } else FeatureShell("Metadata studio", "A place for inspecting and editing tags. Metadata in completed Audio Forensics reports remains available.")
-                        HorizontalDivider()
-                        Text("Saved results", style = MaterialTheme.typography.titleSmall)
-                        TextButton(onClick = { onFeature(FeatureId.FORENSICS) }) { Text("Forensics history") }
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun TrackTable(state: WorkspaceState, selected: Set<String>, onSelected: (Set<String>) -> Unit) {
-    val items = state.selection?.items.orEmpty()
-    val all = items.isNotEmpty() && items.all { it.id in selected }
-    Column(Modifier.horizontalScroll(rememberScrollState()).width(900.dp)) {
-        Row(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceVariant), verticalAlignment = Alignment.CenterVertically) {
-            Checkbox(all, onCheckedChange = { onSelected(if (it) items.map { item -> item.id }.toSet() else emptySet()) },
-                modifier = Modifier.semantics { contentDescription = "Select all tracks" })
-            TableCell("Song info", 290, true)
-            TableCell("Resolution", 190, true)
-            TableCell("Input status", 220, true)
-            TableCell("Size", 145, true)
-        }
-        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-            items.forEach { item ->
-                val probe = state.probes[item.id]
-                Row(Modifier.fillMaxWidth().background(if (item.id in selected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
-                    else MaterialTheme.colorScheme.surface), verticalAlignment = Alignment.CenterVertically) {
-                    Checkbox(item.id in selected, onCheckedChange = { onSelected(if (it) selected + item.id else selected - item.id) },
-                        modifier = Modifier.semantics { contentDescription = "Select ${item.name}" })
-                    TableCell("${item.name}\n${probe?.codec?.uppercase() ?: "Checking header"} · ${item.grantState}", 290)
-                    TableCell(probe?.let { "${it.rate?.let { rate -> "$rate Hz" } ?: "Rate unavailable"}\n${it.precision?.let { bits -> "$bits bit" } ?: "Precision unavailable"} · ${it.channels ?: "?"} ch" } ?: "Pending", 190)
-                    TableCell(probe?.reason ?: "needs_input", 220)
-                    TableCell(item.declaredBytes?.let { "$it bytes" } ?: "Unknown length", 145)
-                }
-                HorizontalDivider()
-            }
-            if (items.isEmpty()) Text("Select audio files or a folder to populate the table.", Modifier.padding(16.dp))
-        }
-    }
-}
-
-@Composable
-private fun TableCell(value: String, width: Int, heading: Boolean = false) {
-    Text(value, Modifier.width(width.dp).padding(10.dp), style = if (heading) MaterialTheme.typography.labelLarge else MaterialTheme.typography.bodySmall)
 }
 
 @Composable
 fun FeatureShell(title: String, description: String) {
-    Card(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text(title, style = MaterialTheme.typography.titleLarge)
-            Text("Planned feature", style = MaterialTheme.typography.labelLarge)
-            Text(description)
-            Text("Audio Forensics is the available feature.", style = MaterialTheme.typography.bodySmall)
-        }
+    Column(Modifier.fillMaxWidth().padding(vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text("Planned feature", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+        Text(title, style = MaterialTheme.typography.headlineMedium)
+        Text(description, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }

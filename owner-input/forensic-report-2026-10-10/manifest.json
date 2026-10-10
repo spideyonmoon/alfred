@@ -1,0 +1,18 @@
+{
+  "brief.md": {
+    "bytes": 27770,
+    "sha256": "4f32d876a6190ba29d523e21b6fd98b36817d2a6c27e31bb0e1ab974790e6baf"
+  },
+  "overview.png": {
+    "bytes": 480582,
+    "sha256": "f078930dc2ad695dce35e823c5da3c3571cef9b6312292a79c00a6348caed548"
+  },
+  "channel-fingerprints.png": {
+    "bytes": 514438,
+    "sha256": "132c5d4f39203c3ed812dd2f82df968d5c43243da808e53cd62db2b3797f9629"
+  },
+  "investigation-sections.png": {
+    "bytes": 317065,
+    "sha256": "adcf0062d8dee0ccbe8ffdeb58de1957a1a72e7d53d43fa318295c2bb773945e"
+  }
+}

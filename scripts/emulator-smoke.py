@@ -24,16 +24,29 @@ try:
     deadline = time.monotonic() + 60
     picker_labels = set()
     entered_settings = False
+    inspected_picker = False
     while time.monotonic() < deadline:
         adb("shell", "uiautomator", "dump", "/sdcard/alfred-smoke.xml")
         adb("pull", "/sdcard/alfred-smoke.xml", str(output / "ui.xml"))
         tree = ET.parse(output / "ui.xml")
         texts = [node.attrib.get("text", "") for node in tree.iter()]
         picker_labels.update(text for text in texts if text in {"Choose documents", "Choose folder"})
-        if len(picker_labels) == 2 and not (output / "workspace.xml").exists():
+        if "Select file / folder" in texts and not (output / "workspace.xml").exists():
             (output / "workspace.xml").write_bytes((output / "ui.xml").read_bytes())
             adb("shell", "screencap", "-p", "/sdcard/alfred-home.png")
             adb("pull", "/sdcard/alfred-home.png", str(output / "home-display.png"))
+        if not inspected_picker and "Select file / folder" in texts:
+            trigger = next(node for node in tree.iter("node") if node.attrib.get("text") == "Select file / folder")
+            left, top, right, bottom = map(int, re.findall(r"\d+", trigger.attrib["bounds"]))
+            adb("shell", "input", "tap", str((left + right) // 2), str((top + bottom) // 2))
+            time.sleep(1)
+            continue
+        if len(picker_labels) == 2 and not inspected_picker:
+            inspected_picker = True
+            (output / "picker-options.xml").write_bytes((output / "ui.xml").read_bytes())
+            adb("shell", "input", "keyevent", "4")
+            time.sleep(1)
+            continue
         assert not any("native_load_failed" in text or "unsupported_version" in text for text in texts), texts
         if any("Native host v1 loaded" in text for text in texts):
             assert len(picker_labels) == 2, picker_labels

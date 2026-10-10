@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.ui.Alignment
@@ -21,11 +22,18 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.graphics.luminance
+import androidx.core.view.WindowCompat
+import androidx.compose.material3.Surface
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -73,14 +81,24 @@ class MainActivity : ComponentActivity() {
         val preferences = getSharedPreferences("workspace-ui", MODE_PRIVATE)
         setContent {
             var appearance by rememberSaveable { mutableStateOf(preferences.getString("appearance", "system") ?: "system") }
-            var preset by rememberSaveable { mutableStateOf(preferences.getString("preset", "publication") ?: "publication") }
+            val preset by rememberSaveable { mutableStateOf(preferences.getString("preset", "publication") ?: "publication") }
             AlfredTheme(appearance) {
+                val lightBars = MaterialTheme.colorScheme.background.luminance() > 0.5f
+                SideEffect {
+                    WindowCompat.getInsetsController(window, window.decorView).apply {
+                        isAppearanceLightStatusBars = lightBars
+                        isAppearanceLightNavigationBars = lightBars
+                    }
+                }
                 val workspace by model.workspace
+                var workspaceCleared by rememberSaveable(workspace.selection?.id) { mutableStateOf(false) }
                 var checkedItems by rememberSaveable(workspace.selection?.id) {
                     mutableStateOf(if (workspace.selection?.incomplete == true) emptyList<String>() else workspace.selection?.items.orEmpty().map { it.id })
                 }
                 val checked = checkedItems.toSet()
                 var route by rememberSaveable { mutableStateOf<String?>(null) }
+                var panel by rememberSaveable { mutableStateOf<String?>(null) }
+                val screens = rememberSaveableStateHolder()
                 var transferNotice by remember { mutableStateOf("") }
                 var exportAttempt by rememberSaveable { mutableStateOf<String?>(null) }
                 var exportDescriptor by rememberSaveable { mutableStateOf<String?>(null) }
@@ -121,52 +139,70 @@ class MainActivity : ComponentActivity() {
                 }
                 LaunchedEffect(Unit) { nativeStatus = withContext(Dispatchers.IO) { NativeBootstrap.load() } }
                 val files = rememberLauncherForActivityResult(SafPicker()) { result ->
-                    if (result != null) { route = "music"; inputs.select(result) }
+                    if (result != null) { route = "music"; panel = null; inputs.select(result) }
                 }
                 val single = rememberLauncherForActivityResult(SafPicker(multiple = false)) { result ->
-                    if (result != null) { route = "music"; inputs.select(result) }
+                    if (result != null) { route = "music"; panel = null; inputs.select(result) }
                 }
                 val folder = rememberLauncherForActivityResult(SafPicker(tree = true)) { result ->
-                    if (result != null) { route = "music"; inputs.select(result) }
+                    if (result != null) { route = "music"; panel = null; inputs.select(result) }
                 }
-                val selectedInputs = if (checked.isEmpty()) null else inputs.featureInputs()?.withSelectedItems(checked)
+                val selectedInputs = if (workspaceCleared || checked.isEmpty()) null else inputs.featureInputs()?.withSelectedItems(checked)
                 BackHandler(route != null) {
-                    route = if (route in FeatureId.entries.map { it.name }) "music" else null
+                    route = if (route in FeatureId.entries.map { it.name } && workspace.selection != null) "music" else null
                 }
                 Scaffold(containerColor = MaterialTheme.colorScheme.background, topBar = {
                     Column {
-                        Row(Modifier.fillMaxWidth().statusBarsPadding().padding(start = 16.dp, end = 16.dp),
+                        if (route == "music") Spacer(Modifier.statusBarsPadding())
+                        else Row(Modifier.fillMaxWidth().statusBarsPadding().padding(start = 16.dp, end = 16.dp),
                             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text("Alfred", style = MaterialTheme.typography.titleLarge)
+                            Text("alfred", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary)
                             Row {
-                                TextButton(onClick = { route = null }) { Text("Home") }
-                                TextButton(onClick = { route = "settings" }) { Text("Settings") }
+                                if (route != null) TextButton(onClick = { route = null }) { Text("Home") }
+                                if (route != "settings") TextButton(onClick = { route = "settings" }) { Text("Settings") }
                             }
                         }
                         if (transferNotice.isNotEmpty()) Text(transferNotice, Modifier.padding(horizontal = 16.dp))
                         if (model.jobs.releaseUnconfirmed()) Text("Native release could not be confirmed. Work is blocked to protect its files; force-stop Alfred before reopening it.", Modifier.padding(16.dp))
                         Column(Modifier.heightIn(max = 180.dp).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
-                            jobs.filter { !it.terminal }.forEach { job ->
-                                Text("${job.feature} · ${job.state}${if (job.cancelRequested) " · cancellation requested" else ""}")
-                                if (progress?.attemptId == job.attemptId) Text("${progress?.phase} · pass ${progress?.pass ?: "unknown"} · ${progress?.frames ?: "unknown"} frames / ${progress?.expectedFrames ?: "unknown"}")
-                                TextButton(onClick = { model.jobs.cancel(job.attemptId) }) { Text("Cancel operation") }
+                            jobs.filter { !it.terminal && !(route == "music" && it.feature == "forensics") }.forEach { job ->
+                                Surface(color = MaterialTheme.colorScheme.primaryContainer, shape = MaterialTheme.shapes.small) {
+                                    Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp)) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Column(Modifier.weight(1f)) {
+                                                Text("${job.feature.replaceFirstChar { it.uppercase() }} · ${job.state.replace('_', ' ')}", style = MaterialTheme.typography.labelLarge)
+                                                if (job.cancelRequested) Text("Cancellation requested", style = MaterialTheme.typography.bodySmall)
+                                            }
+                                            TextButton(enabled = !job.cancelRequested, onClick = { model.jobs.cancel(job.attemptId) }) { Text("Cancel operation") }
+                                        }
+                                        if (progress?.attemptId == job.attemptId) {
+                                            Text("${progress?.phase} · ${progress?.frames ?: "unknown"} frames", style = MaterialTheme.typography.bodySmall)
+                                        }
+                                    }
+                                }
+                                Spacer(Modifier.height(4.dp))
                             }
                         }
                     }
                 }) { insets ->
-                    Column(Modifier.fillMaxSize().padding(insets)) {
+                    Column(Modifier.fillMaxSize().padding(insets).imePadding()) {
                         when (route) {
                             "settings" -> SettingsScreen(appearance, { value -> appearance = value; preferences.edit().putString("appearance", value).apply() },
                                 preset, nativeStatus, notificationAllowed,
                                 { if (Build.VERSION.SDK_INT >= 33) notifications.launch(Manifest.permission.POST_NOTIFICATIONS) })
-                            "music" -> MusicWorkspace(workspace, checked, { checkedItems = it.toList() }, inputs,
-                                forensicsOperation, { route = it.name }, { files.launch(Unit) }, { folder.launch(Unit) })
+                            "music" -> screens.SaveableStateProvider("music") { MusicWorkspace(
+                                if (workspaceCleared) WorkspaceState() else workspace, checked, { checkedItems = it.toList() }, inputs,
+                                forensicsOperation, { route = it.name }, { files.launch(Unit) }, { folder.launch(Unit) }, panel, { panel = it },
+                                onHome = { route = null }, onSettings = { route = "settings" },
+                                onClear = { workspaceCleared = true; checkedItems = emptyList() }) { focused ->
+                                    ForensicsScreen(selectedInputs, model.jobs, jobs, export, share, showHistory = false, focusedItem = focused)
+                                } }
                             in FeatureId.entries.map { it.name } -> {
-                                TextButton(onClick = { route = "music" }) { Text("Back to workspace") }
+                                TextButton(onClick = { route = if (workspace.selection != null) "music" else null }) { Text(if (workspace.selection != null) "‹ Back to workspace" else "‹ Home") }
                                 Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp),
                                     verticalArrangement = Arrangement.spacedBy(12.dp)) {
                                     when (route) {
-                                        FeatureId.FORENSICS.name -> ForensicsScreen(selectedInputs, model.jobs, jobs, export, share) { feature -> route = feature.name }
+                                        FeatureId.FORENSICS.name -> ForensicsScreen(null, model.jobs, jobs, export, share)
                                         FeatureId.SPECTROGRAM.name -> FeatureShell("Spectrogram", "A place for visualizing the selected track's spectrum. Rendering and export are planned.")
                                         FeatureId.COMPARE.name -> FeatureShell("Compare", "A place for comparing 2–32 declared variants of the same track. Comparison is planned.")
                                     }
